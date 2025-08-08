@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>intelligence</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/180px-Apple_logo_black.svg.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.4;
+      background-color: #1a1c23;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+
+      display: flex;
+      flex-direction: column;
+      align-items: stretch; /* <-- changed from center */
+      justify-content: flex-start;
+    }
+
+    #ios-status-bar-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top);
+      background-color: #1A1C23;
+      z-index: 1400;
+      pointer-events: none;
+    }
+
+    .app-title {
+      display: flex;
+      align-items: center;
+      padding-top: env(safe-area-inset-top);
+      padding: 16px;
+      font-size: 22px;
+      font-weight: 900;
+      color: #f7f6f3;
+      -webkit-font-smoothing: antialiased;
+      justify-content: flex-start; /* <-- ensure left alignment */
+    }
+
+    .app-title img {
+      height: 60px;
+      margin-right: 5px;
+    }
+
+    #pageContent {
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    .homepage-cards {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  gap: 16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 1px;
+  scroll-behavior: smooth;
+  margin-top: 0px;
+
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.homepage-cards::-webkit-scrollbar {
+  display: none;
+}
+
+.homepage-cards .homepage-panel {
+  flex: 0 0 80%;
+  scroll-snap-align: center;
+
+  /* Ultra smooth glass-like pale background with 7-stop gradient */
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255 255 255 / 0.10) 0%,
+      rgba(255 255 255 / 0.095) 15%,
+      rgba(255 255 255 / 0.09) 30%,
+      rgba(255 255 255 / 0.085) 45%,
+      rgba(255 255 255 / 0.085) 55%,
+      rgba(255 255 255 / 0.09) 70%,
+      rgba(255 255 255 / 0.095) 85%,
+      rgba(255 255 255 / 0.10) 100%
+    ),
+    rgba(26, 28, 35, 0.6);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  box-shadow:
+    inset 3px 0 5px rgba(0, 0, 0, 0.35),
+    inset -3px 0 5px rgba(0, 0, 0, 0.35),
+    0 8px 20px rgba(0, 0, 0, 0.15);
+
+  color: #f7f6f3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+  border-radius: 20px;
+  height: 200px;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.4s ease, color 0.4s ease, border 0.4s ease;
+
+  border: 1px solid rgba(255 255 255 / 0.15);
+}
+
+.homepage-cards .homepage-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.5px;  /* Thinner highlight */
+  border-radius: 20px 20px 0 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255 255 255 / 0.22),
+    rgba(255 255 255 / 0)
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.homepage-cards .homepage-panel::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1.5px;  /* Thinner highlight */
+  border-radius: 0 0 20px 20px;
+  background: linear-gradient(
+    0deg,
+    rgba(255 255 255 / 0.22),
+    rgba(255 255 255 / 0)
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.homepage-panel .panel-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* center all lines horizontally */
+  font-weight: 700;
+  line-height: 1.4;
+  user-select: none;
+  font-size: 18px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  text-align: center; /* center inline-flex children */
+}
+
+.homepage-panel .panel-text .time-line {
+  margin-bottom: 5px;
+  display: inline-flex;  /* inline-flex so width fits content */
+  justify-content: flex-start;
+  padding-left: 12px;
+  gap: 0px;
+  margin-top: 6px;
+  align-items: center;
+  /* no fixed width here */
+}
+
+.homepage-panel .panel-text .time-line i {
+  width: 24px;
+  text-align: center;
+  color: #F7F6F3;
+  flex-shrink: 0;
+}
+
+.homepage-panel .panel-text .label {
+  font-weight: 700;
+  color: #F7F6F3;
+  font-size: 16px;
+  width: 90px;
+  flex-shrink: 0;
+  text-align: left; /* keep label text left aligned */
+}
+
+.homepage-panel .panel-text .time {
+  font-size: 16px;
+  font-weight: 600;
+  color: #F7F6F3;
+  width: 80px;
+  flex-shrink: 0;
+  text-align: left; /* keep time text left aligned */
+}
+
+    .homepage-panel .panel-icon {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 24px;
+      color: #F7F6F3;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      display: inline-block;
+      transition: color 0.4s ease;
+    }
+
+@keyframes rotateGear {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.homepage-panel .bi-gear-wide-connected {
+  animation: rotateGear 6s linear infinite; /* 6s = slow & smooth */
+  transform-origin: center; /* ensures perfect rotation center */
+}
+
+.phone-mail-buttons {
+  display: flex;
+  gap: 1px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.app-button {
+  width: 60px;
+  height: 60px;
+  margin-top: -10px;
+  border-radius: 20px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 28px;
+  background: transparent;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f7f6f3;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.app-button i {
+  color: #f7f6f3; 
+}
+
+.app-icon-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 12px;
+}
+
+.app-button.pressed {
+  background: rgba(255, 255, 255, 0.30);
+  color: #fff;
+  transition-duration: 0.3s;
+}
+
+.app-label {
+  margin-top: 9px;
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: rgba(235, 235, 245, 0.6);
+  text-align: center;
+  user-select: none;
+  line-height: 1.1;
+  letter-spacing: -0.1px;
+}
+
+.app-button i {
+  pointer-events: none;
+}
+
+    .homepage-panel.lightning-panel .button-pill {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 4px 20px;
+      line-height: 20px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: #e0e0e0;
+      text-transform: uppercase;
+      background-image: linear-gradient(135deg, #2a2a2a 0%, #444444 25%, #606060 50%, #444444 75%, #2a2a2a 100%);
+      background-size: 300% 300%;
+      background-position: 0% 50%;
+      animation: holoShift 6s ease-in-out infinite;
+      user-select: none;
+      white-space: nowrap;
+      width: fit-content;
+      margin: 0;
+      cursor: default;
+      pointer-events: none;
+      z-index: 1500;
+    }
+
+    @keyframes holoShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* --- Start of your second code styles --- */
+
+    body {
+      /* no need to override again */
+    }
+
+    .step-pill {
+  position: relative;
+  background: rgba(255, 255, 255, 0.08);  /* translucent white */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* glass shadow */
+  padding: 8px 0;
+  width: 250px;
+  display: flex;
+  user-select: none;
+  margin: 0 auto 1px auto;
+  font-weight: 800;
+  font-size: 18px;
+  color: #F7F6F3;
+}
+
+    .step-pill span {
+      flex: 1;
+      text-align: center;
+      z-index: 1;
+      transition: color 0.4s ease;
+      cursor: pointer;
+    }
+
+    #emailLabel {
+      user-select: none;
+      font-size: 14px;
+      color: #8e8e93;
+      font-weight: 600;
+      margin-bottom: 8px;
+      margin-top: 0px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+    }
+
+    #emailLabel i {
+      margin-right: 6px;
+      font-size: 18px;
+    }
+
+    .highlight {
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      width: calc(33.33% - 16px);
+      left: 8px;
+      z-index: 0;
+      border-radius: 999px;
+      background-image: linear-gradient(135deg,
+        #2a2a2a 0%,
+        #444444 25%,
+        #606060 50%,
+        #444444 75%,
+        #2a2a2a 100%);
+      background-size: 300% 300%;
+      background-position: 0% 50%;
+      animation: holoShift 6s ease-in-out infinite;
+      transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .form-wrapper {
+  display: none; /* keep your existing display logic */
+
+  background: #1A1C23;
+
+  /* Subtle, soft outer shadows */
+  box-shadow:
+  3px 3px 5px #121317,
+ -3px -3px 5px #20222a;
+
+  border-radius: 20px;
+
+  /* Keep existing padding, sizing, and layout */
+  padding: 12px 14px;
+  box-sizing: border-box;
+  width: 340px;
+  user-select: text;
+  margin: 0 auto 16px auto;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  /* Text color consistent with homepage panels */
+  color: #f7f6f3;
+}
+
+    .edit-icon {
+      position: absolute;
+      top: 20px;
+      right: 160px;
+      font-size: 22px;
+      color: #8e8e93;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .time-row.unified {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .time-row.unified i {
+      font-size: 22px;
+      color: #f7f6f3;
+    }
+
+    .time-row.unified i.bi-clock-fill {
+      position: relative;
+      top: 2px;
+    }
+
+    #custominput {
+  max-width: 140px;
+  font-size: 16px;
+  padding: 6px 8px;
+  padding-top: 4px;
+  border-radius: 50px;
+  background: #1A1C23;
+  text-align: center;
+  border: none;
+  box-sizing: border-box;
+  font-weight: 700;
+  margin-bottom: 0;
+  color: #F7F6F3;
+  box-shadow: inset 4px 4px 6px #15161a,
+              inset -4px -4px 6px #21232b;
+}
+
+#break {
+  width: 60px;
+  font-size: 16px;
+  text-align: center;
+  border-radius: 50px;
+  background: #1A1C23;
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+  font-weight: 700;
+  margin-bottom: 0;
+  padding: 6px 8px;
+  padding-top: 4px;
+  color: #F7F6F3;
+  border: none;
+  box-shadow: inset 4px 4px 6px #15161a,
+              inset -4px -4px 6px #21232b;
+}
+
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .slider-wrapper {
+  position: relative;
+  width: 90vw;
+  max-width: 400px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 50px;
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+  transition: background 0.4s ease;
+  margin: 0 auto;
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+    .slider-handle {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  z-index: 20;
+  transform: translateX(0);
+  transition: transform 0.2s ease;
+
+  background: linear-gradient(145deg, #3a3f4a, #1e2128);
+
+  box-shadow:
+    inset -4px -4px 6px rgba(255, 255, 255, 0.15),
+    inset 4px 4px 6px rgba(0, 0, 0, 0.7),
+    0 8px 15px rgba(0, 0, 0, 0.8),
+    0 2px 4px rgba(255, 255, 255, 0.05);
+}
+
+.slider-handle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    transparent 68%,
+    rgba(0, 0, 0, 0.08) 75%,
+    transparent 82%
+  );
+  z-index: 0;
+  pointer-events: none;
+}
+
+.slider-handle::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.07),
+    rgba(0, 0, 0, 0.25)
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+    .slider-handle.resetting {
+      transition: box-shadow 0.3s ease, left 0.4s ease;
+    }
+
+    .slider-handle i {
+      font-size: 52px;
+      color: #7a7c87;
+  text-shadow:
+    1px 1px 0 rgba(0, 0, 0, 0.4),
+   -1px -1px 0 rgba(255, 255, 255, 0.05);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+
+    .slider-wrapper.connected .slider-handle {
+  transform: translateX(-1px);
+}
+
+    .slider-wrapper.connected .slider-handle i {
+      opacity: 1;
+      transition-delay: 0.2s;
+    }
+
+
+
+#actionSheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 90vh; /* ADJUST HEIGHT HERE */
+  background: rgba(26, 28, 35, 0.9);
+  backdrop-filter: blur(12px);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  z-index: 2100;
+  will-change: transform;
+}
+
+#actionSheet.visible {
+  transform: translateY(0);
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+}
+
+#sheetCloseBtn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 32px;
+  cursor: pointer;
+  margin-top: 16px; /* optional */
+}
+
+.sheet-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  color: #f7f6f3;
+}
+
+/* --- Phone Action Sheet Styles --- */
+
+.card-wrapper {
+  all: unset;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  color: #f7f6f3;
+  padding: 28px 24px;
+  display: flex;
+  align-items: center;
+  user-select: none;
+  cursor: pointer;
+  margin-bottom: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  text-decoration: none;
+  border: 2px solid transparent;
+  transition: background-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-wrapper:focus {
+  outline: none;
+}
+
+.card-wrapper.pressed {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+  transition: background-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.icon-left {
+  font-size: 28px;
+  margin-right: 20px;
+  flex-shrink: 0;
+  color: #f7f6f3;
+}
+
+.chevron-right {
+  font-size: 24px;
+  color: rgba(247, 246, 243, 0.6);
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: color 0.3s ease;
+}
+
+.card-wrapper.pressed .chevron-right {
+  color: #fff;
+}
+
+.contact-name {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: #f7f6f3;
+}
+
+.contact-phone,
+.contact-details {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-bottom: 4px;
+  color: #f7f6f3;
+}
+
+.contact-details {
+  margin-bottom: 0;
+  font-size: 14px;
+}
+
+.mail-container {
+  background: transparent;
+  border-radius: 20px;
+  padding: 20px;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* Picker wrapper */
+.picker-wrapper {
+  position: relative;
+  height: 120px; /* 3 visible rows */
+  overflow: hidden;
+  border-radius: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Top and bottom fade */
+.picker-wrapper::before,
+.picker-wrapper::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 40px;
+  pointer-events: none;
+  z-index: 2;
+}
+.picker-wrapper::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(26,28,35,0.9), rgba(26,28,35,0));
+}
+.picker-wrapper::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(26,28,35,0.9), rgba(26,28,35,0));
+}
+
+/* The scrollable list */
+.picker-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  height: 100%;
+  position: relative;
+}
+
+.picker-list::-webkit-scrollbar {
+  display: none;
+}
+
+.picker-wrapper {
+  position: relative;
+}
+
+.picker-mail-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 12px; /* adjust this to where you want the icon */
+  font-size: 20px;
+  color: white;
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Each item */
+.picker-item {
+  height: 40px;
+  line-height: 40px;
+  text-align: center;
+  color: #bbb;
+  scroll-snap-align: center;
+  font-size: 16px;
+  transform-origin: center;
+  transition: transform 0.2s, opacity 0.2s, color 0.2s;
+}
+
+.picker-item.empty {
+  color: transparent;
+}
+
+/* Highlight line */
+.picker-highlight {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 40px;
+  transform: translateY(-50%);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.picker-item.selected {
+  color: #fff;
+  font-weight: bold;
+  z-index: 4;
+}
+
+.mail-container input,
+.mail-container textarea {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 20px;
+  padding: 10px;
+  font-size: 16px;
+  color: #f7f6f3;
+  line-height: 1.4;
+  outline: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.mail-container button.send {
+  background: rgba(255, 255, 255, 0.35);
+  color: #1A1C23;
+  font-weight: 700;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,0.4);
+  backdrop-filter: blur(12px);
+  border-radius: 30px;
+  padding: 10px 20px;
+  font-size: 16px;
+  width: auto;
+  margin: 0 auto;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.mail-container button.send:active {
+  background: rgba(255,255,255,0.45);
+  transform: scale(0.97);
+}
+
+.verify-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  transform: translateX(-7px);
+  justify-content: center;
+  gap: 10px;
+  margin-top: 5px;
+  margin-bottom: 20px;
+}
+
+.verify-label {
+  font-size: 16px;
+  color: rgba(247, 246, 243, 0.8);
+  font-weight: 500;
+}
+
+.send-toggle {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+  margin-left: 8px;
+}
+
+.send-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.send-toggle .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.2);
+  border-radius: 30px;
+  transition: background 0.2s;
+}
+
+.send-toggle .slider::before {
+  content: "";
+  position: absolute;
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  top: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.send-toggle input:checked + .slider {
+  background: #7a7c87;
+}
+
+.send-toggle input:checked + .slider::before {
+  transform: translateX(22px);
+}
+
+.mail-container button.send:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+#actionSheet .sheet-content:has(.mail-container) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform: translateY(-25px);
+}
+
+.show-id-button {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 80px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #1A1C23;
+  border-radius: 50%;
+  border: none;
+  box-shadow:
+    3px 3px 5px #121317,
+   -3px -3px 5px #20222a;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.show-id-button i {
+  font-size: 44px;
+  color: #7a7c87;
+  text-shadow:
+    1px 1px 0 rgba(0, 0, 0, 0.4),
+   -1px -1px 0 rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+}
+
+    #idViewer {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 28, 35, 0.85); /* increase opacity a bit */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  /* add a slight tint */
+  /* background is already tinting, you can adjust alpha to strengthen */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 2100;
+}
+
+    #idViewer.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .id-card {
+      width: 85%;
+      max-width: 360px;
+      aspect-ratio: 1 / 1.58;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      overflow: hidden;
+      background-color: #dd426a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+      pointer-events: none;
+      transform: scale(0.8);
+      opacity: 0;
+      margin-top: -150px;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .id-card.visible {
+      transform: scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .id-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 16px;
+    }
+
+    #xButton {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.9);
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 36px;
+      cursor: pointer;
+      user-select: none;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 2110;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #xButton.visible {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+      pointer-events: auto;
+    }
+
+#slider-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  position: relative;
+  left: 0;
+  right: 0;
+
+  margin-top: 30px; 
+  margin-bottom: 0px;
+
+  pointer-events: none;
+  z-index: 1;
+}
+
+#slider-section > * {
+  pointer-events: auto;
+}
+
+#timeSliderContainer {
+  background-color: #1a1c23; /* light gray background */
+  border-radius: 20px;
+  margin-top: 15px;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  transition: all 0.3s ease;
+}
+
+/* Hide time inputs by default, only visible for step 2 */
+#timeInputs {
+  display: none;
+  width: 100%;
+  max-width: 320px; /* or whatever width you prefer */
+  box-sizing: border-box;
+}
+
+/* When time inputs are visible, align container to flex-start */
+#timeSliderContainer.timeInputs-visible {
+  justify-content: flex-start;
+  padding-top: 0px; /* add some top padding if needed */
+}
+
+  </style>
+</head>
+<body>
+  <div id="ios-status-bar-bg"></div>
+
+  <div class="app-title" id="appTitle">
+    <img src="https://via.placeholder.com/60" alt="App Icon" />
+    <span>intelligence</span>
+  </div>
+
+  <div id="pageContent">
+    <div id="home-panels" class="homepage-cards">
+      <div class="homepage-panel" id="history-panel">
+  <i class="bi bi-database-fill-check panel-icon"></i>
+  <span class="panel-text">送信履歴</span>
+</div>
+      <div class="homepage-panel lightning-panel">
+        <i class="bi bi-lightning-charge-fill panel-icon"></i>
+        <span class="panel-text">作業指示書</span>
+        <div class="button-pill">Auto</div>
+      </div>
+<div class="homepage-panel phone-panel">
+  <i class="bi bi-plus-circle-fill panel-icon"></i>
+  <div class="phone-mail-buttons">
+    <div class="app-icon-wrapper">
+      <button class="app-button">
+        <i class="bi bi-telephone-fill"></i>
+      </button>
+      <div class="app-label">Call</div>
+    </div>
+    <div class="app-icon-wrapper">
+      <button class="app-button">
+        <i class="bi bi-envelope-fill"></i>
+      </button>
+      <div class="app-label">Mail</div>
+    </div>
+  </div>
+</div>
+
+      <div class="homepage-panel">
+        <i class="bi bi-gear-wide-connected panel-icon"></i>
+        <div class="info">
+          <div style="font-size: 40px; font-weight: 800;">6.0</div>
+          <div class="version-date" style="position: absolute; top: 12px; right: 14px; opacity: 0.6; font-family: 'IBM Plex Mono', 'SF Mono', 'Fira Code', monospace; font-size: 14px;">
+            <i class="bi bi-rocket-takeoff" style="font-size: 16px;"></i><span style="margin-left: 6px;">20250708</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="slider-section">
+  <div class="step-pill" id="stepPill">
+    <div class="highlight"></div>
+    <span id="step1">出発</span>
+    <span id="step2">到着</span>
+    <span id="step3">終了</span>
+  </div>
+
+  <div id="timeSliderContainer">
+  <div class="form-wrapper" id="timeInputs">
+    <div class="time-row unified">
+      <i class="bi bi-clock-fill"></i>
+      <input
+        type="text"
+        id="custominput"
+        name="custominput"
+        value="6:30 – 15:30"
+        placeholder="00:00 – 00:00"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+      <i class="bi bi-clock-history"></i>
+      <input
+        type="number"
+        id="break"
+        inputmode="numeric"
+        min="0"
+        max="180"
+        value="60"
+        placeholder="0"
+      />
+    </div>
+  </div>
+
+  <div class="slider-wrapper" id="slider">
+    <div class="slider-handle" id="handle">
+      <i class="bi bi-check"></i>
+    </div>
+  </div>
+</div>
+
+  <div id="emailLabel">
+    <i class="bi bi-person-circle"></i>
+    <span id="emailText">xxxxxxxx@xxxxx.com</span>
+  </div>
+</div>
+
+<button class="show-id-button" id="showIdBtn" aria-label="Show ID">
+      <i class="bi bi-person-vcard-fill show-id-icon"></i>
+    </button>
+
+    <div class="id-viewer" id="idViewer">
+      <div class="id-card" id="idCard">
+        <img src="https://via.placeholder.com/850x540.png?text=ID+Card"/>
+      </div>
+      <i class="bi bi-x x-button" id="xButton" aria-label="Close ID"></i>
+    </div>
+
+<!-- Action Sheet -->
+<div id="actionSheet">
+  <!-- Close button -->
+  <button id="sheetCloseBtn">
+    <i class="bi bi-arrow-down-circle-fill"></i>
+  </button>
+
+  <!-- Content area -->
+  <div class="sheet-content">
+    <!-- Placeholder for now -->
+    <p>ここに連絡先リストを入れます...</p>
+  </div>
+</div>
+
+  <script>
+  const slider = document.getElementById('slider');
+  const handle = document.getElementById('handle');
+  const stepPill = document.getElementById('stepPill');
+  const timeInputs = document.getElementById('timeInputs');
+  const steps = ['step1', 'step2', 'step3'];
+
+  let isDragging = false, startX = 0, currentX = 0;
+
+  let step = parseInt(localStorage.getItem('savedStep')) || 0;
+if (isNaN(step) || step < 0 || step >= steps.length) step = 0;
+
+// Manual date-based fallback reset (for reopening app after long time)
+const currentDateStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }))
+  .toISOString().split('T')[0];
+const lastOpened = localStorage.getItem('lastOpenedDate');
+
+if (lastOpened !== currentDateStr) {
+  const existingLog = JSON.parse(localStorage.getItem('timeLog') || '{}');
+  if (existingLog.date !== currentDateStr) {
+  // Only reset if log is for a *previous* day AND has no useful data
+  const hasData = existingLog['出発'] || existingLog['到着'] || existingLog['終了'];
+  if (!hasData) {
+    localStorage.setItem('timeLog', JSON.stringify({ date: currentDateStr }));
+    localStorage.setItem('lastResetTimestamp', Date.now().toString());
+    step = 0;
+    localStorage.setItem('savedStep', step);
+    updatePanelText();
+    updateHighlight();
+  }
+ }
+}
+
+// Always update last opened date
+localStorage.setItem('lastOpenedDate', currentDateStr);
+
+  // === Configuration for reset time (JST) ===
+  const RESET_HOUR = 0; 
+  const RESET_MINUTE = 0; 
+
+  // Get JST Date object for now
+  function getJstDate() {
+    const now = new Date();
+    return new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  }
+
+  // Get timestamp of today's reset time in JST
+  function getTodayResetTimestamp() {
+    const jstNow = getJstDate();
+    const resetTime = new Date(jstNow);
+    resetTime.setHours(RESET_HOUR, RESET_MINUTE, 0, 0);
+    return resetTime.getTime();
+  }
+
+  // Get last reset timestamp saved in localStorage
+  function getLastResetTimestamp() {
+    return parseInt(localStorage.getItem('lastResetTimestamp')) || 0;
+  }
+
+  // Check if reset needed and perform it
+  function checkAndResetIfNeeded() {
+    const now = getJstDate().getTime();
+    const resetToday = getTodayResetTimestamp();
+    const lastReset = getLastResetTimestamp();
+
+    // If current time is past reset and last reset was before resetToday
+    if (now >= resetToday && lastReset < resetToday) {
+      const todayStr = getJstDate().toISOString().split('T')[0];
+      localStorage.setItem('timeLog', JSON.stringify({ date: todayStr }));
+      localStorage.setItem('lastResetTimestamp', resetToday.toString());
+
+      // Reset step to 0 on reset
+      step = 0;
+      localStorage.setItem('savedStep', step);
+
+      updatePanelText();
+      updateHighlight();
+    }
+  }
+
+  // Run the reset check immediately on load
+  checkAndResetIfNeeded();
+
+  function getMaxX() {
+    return slider.offsetWidth - handle.offsetWidth - 8;
+  }
+
+  function updateHighlight() {
+  const highlight = stepPill.querySelector('.highlight');
+  highlight.style.left = `calc(${step * 33.33}% + 8px)`;
+  steps.forEach((id, i) => {
+    document.getElementById(id).style.color = (i === step) ? '#F7F6F3' : '#8e8e93';
+  });
+
+  const container = document.getElementById('timeSliderContainer');
+
+  // Always show timeInputs regardless of step
+timeInputs.style.display = 'flex';
+document.getElementById('custominput').value = '6:30 – 15:30';
+document.getElementById('break').value = 60;
+container.classList.add('timeInputs-visible');
+}
+
+  steps.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => {
+      step = i;
+      localStorage.setItem('savedStep', step);
+      updateHighlight();
+    });
+  });
+
+  handle.addEventListener('touchstart', startDrag, { passive: false });
+  handle.addEventListener('mousedown', startDrag);
+
+  function startDrag(e) {
+    if (slider.classList.contains("connected")) return;
+    e.preventDefault();
+    isDragging = true;
+    handle.classList.remove('resetting');
+    startX = (e.touches ? e.touches[0].clientX : e.clientX) - currentX - 4;
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('touchend', endDrag);
+    document.addEventListener('mouseup', endDrag);
+  }
+
+  function onDrag(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    const maxX = getMaxX();
+    currentX = Math.min(Math.max(0, x - startX - 4), maxX);
+    updateSlider();
+  }
+
+  function updateSlider() {
+    const maxX = getMaxX();
+    handle.style.left = `${4 + currentX}px`;
+  }
+
+  function endDrag() {
+    if (!isDragging) return;
+    isDragging = false;
+    const maxX = getMaxX();
+    if (currentX > maxX * 0.9) {
+      currentX = maxX;
+      handle.style.left = `${maxX + 4}px`;
+      slider.classList.add('connected');
+
+      const now = new Date();
+      const timeString = now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0');
+      const labelMap = ['出発', '到着', '終了'];
+      const savedData = JSON.parse(localStorage.getItem('timeLog') || '{}');
+      const jstDate = getJstDate();
+      const today = jstDate.toISOString().split('T')[0];
+
+      // Check and reset if needed (to avoid logging on old day)
+      checkAndResetIfNeeded();
+
+      // Update time for current step
+      const updatedData = {
+        ...JSON.parse(localStorage.getItem('timeLog') || '{}'),
+        date: today,
+        [labelMap[step]]: timeString
+      };
+
+      localStorage.setItem('timeLog', JSON.stringify(updatedData));
+      updatePanelText();
+
+      setTimeout(() => {
+        slider.classList.remove('connected');
+        handle.classList.add('resetting');
+
+        handle.style.left = '4px';
+        currentX = 0;
+        step = (step + 1) % steps.length;
+        localStorage.setItem('savedStep', step);
+        updateHighlight();
+        setTimeout(() => handle.classList.remove('resetting'), 400);
+      }, 900);
+    } else {
+      currentX = 0;
+      handle.style.left = '4px';
+      slider.classList.remove('connected');
+      slider.style.background = 'rgba(255, 255, 255, 0.08)';
+      slider.style.backdropFilter = 'blur(12px)';
+      slider.style.webkitBackdropFilter = 'blur(12px)';
+      slider.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+    }
+
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('touchend', endDrag);
+    document.removeEventListener('mouseup', endDrag);
+  }
+
+  // Schedule the reset using setTimeout for live sessions
+  function scheduleMidnightReset() {
+    const now = getJstDate();
+    let nextReset = new Date(now);
+    nextReset.setHours(RESET_HOUR, RESET_MINUTE, 0, 0);
+
+    if (now.getTime() >= nextReset.getTime()) {
+      // If current time passed today's reset, schedule for next day
+      nextReset.setDate(nextReset.getDate() + 1);
+    }
+
+    const msUntilReset = nextReset.getTime() - now.getTime();
+
+    setTimeout(() => {
+      // Perform reset
+      const todayStr = getJstDate().toISOString().split('T')[0];
+      localStorage.setItem('timeLog', JSON.stringify({ date: todayStr }));
+      localStorage.setItem('lastResetTimestamp', nextReset.getTime().toString());
+
+      step = 0;
+      localStorage.setItem('savedStep', step);
+
+      updatePanelText();
+      updateHighlight();
+
+      // Schedule next reset recursively
+      scheduleMidnightReset();
+    }, msUntilReset);
+  }
+
+  scheduleMidnightReset();
+
+  function updatePanelText() {
+    const savedData = JSON.parse(localStorage.getItem('timeLog') || '{}');
+    const now = getJstDate();
+    const today = now.toISOString().split('T')[0];
+    const panel = document.querySelector('#history-panel .panel-text');
+
+    if (savedData.date !== today) {
+      panel.textContent = '送信履歴';
+      return;
+    }
+
+    const lines = [];
+    if (savedData['出発']) lines.push(`<div class="time-line"><span class="label">出発連絡</span><span class="time"><i class="bi bi-toggle-on" style="margin-right: 6px;"></i>${savedData['出発']}</span></div>`);
+    if (savedData['到着']) lines.push(`<div class="time-line"><span class="label">到着連絡</span><span class="time"><i class="bi bi-toggle-on" style="margin-right: 6px;"></i>${savedData['到着']}</span></div>`);
+    if (savedData['終了']) lines.push(`<div class="time-line"><span class="label">終了連絡</span><span class="time"><i class="bi bi-toggle-on" style="margin-right: 6px;"></i>${savedData['終了']}</span></div>`);
+
+    if (lines.length === 0) {
+      panel.textContent = '送信履歴';
+    } else {
+      panel.innerHTML = lines.join('');
+    }
+  }
+
+  updateHighlight();
+  updatePanelText();
+
+  const buttons = document.querySelectorAll('.app-button');
+
+  buttons.forEach(button => {
+    button.addEventListener('touchstart', () => {
+      button.classList.add('pressed');
+    }, { passive: true });
+
+    button.addEventListener('touchend', () => {
+      setTimeout(() => button.classList.remove('pressed'), 250);
+    });
+
+    button.addEventListener('touchcancel', () => {
+      button.classList.remove('pressed');
+    });
+  });
+
+  // Elements
+  const actionSheet = document.getElementById('actionSheet');
+  const sheetCloseBtn = document.getElementById('sheetCloseBtn');
+  const phoneButton = document.querySelector('.phone-panel .bi-telephone-fill').closest('.app-button');
+  const mailButton = document.querySelector('.phone-panel .bi-envelope-fill').closest('.app-button');
+
+  function closeActionSheet() {
+    actionSheet.classList.remove('visible');
+  }
+  sheetCloseBtn.addEventListener('click', closeActionSheet);
+
+  phoneButton.addEventListener('click', () => {
+    document.querySelector('#actionSheet .sheet-content').innerHTML = `
+      <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+        <i class="bi bi-person-fill icon-left"></i>
+        <div class="card-text">
+          <div class="contact-name">XX支店</div>
+          <div class="contact-phone">000-0000-0000</div>
+          <div class="contact-details">contact 1</div>
+        </div>
+        <i class="bi bi-chevron-right chevron-right"></i>
+      </button>
+      <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+        <i class="bi bi-buildings-fill icon-left"></i>
+        <div class="card-text">
+          <div class="contact-name">XX本社</div>
+          <div class="contact-phone">000-0000-0000</div>
+          <div class="contact-details">contact 2</div>
+        </div>
+        <i class="bi bi-chevron-right chevron-right"></i>
+      </button>
+      <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+        <i class="bi bi-exclamation-circle-fill icon-left"></i>
+        <div class="card-text">
+          <div class="contact-name">緊急連絡</div>
+          <div class="contact-phone">000-0000-0000</div>
+          <div class="contact-details">contact 3</div>
+        </div>
+        <i class="bi bi-chevron-right chevron-right"></i>
+      </button>
+      <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+        <i class="bi bi-box-seam-fill icon-left"></i>
+        <div class="card-text">
+          <div class="contact-name">XXXX管理事務所</div>
+          <div class="contact-phone">000-0000-0000</div>
+          <div class="contact-details">contact 4</div>
+        </div>
+        <i class="bi bi-chevron-right chevron-right"></i>
+      </button>
+    `;
+    actionSheet.classList.add('visible');
+  });
+
+  function callNumber(phoneNumber) {
+    window.location.href = 'tel:' + phoneNumber;
+  }
+
+  function handleTap(event, element) {
+    element.classList.add('pressed');
+    setTimeout(() => {
+      element.classList.remove('pressed');
+    }, 250);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    document.querySelectorAll('.card-wrapper.pressed').forEach(el => {
+      el.classList.remove('pressed');
+    });
+    checkAndResetIfNeeded();
+    updatePanelText();
+  }
+});
+
+  mailButton.addEventListener('click', () => {
+    document.querySelector('#actionSheet .sheet-content').innerHTML = `
+      <div class="mail-container">
+        <div class="picker-wrapper">
+          <ul class="picker-list" id="picker">
+            <li class="picker-item empty"></li>
+            <li class="picker-item">X1@XXXXX.com</li>
+            <li class="picker-item">X2@XXXXX.com</li>
+            <li class="picker-item">X3@XXXXX.com</li>
+            <li class="picker-item">X4@XXXXX.com</li>
+            <li class="picker-item empty"></li>
+          </ul>
+          <div class="picker-highlight"></div>
+          <i class="bi bi-envelope-fill picker-mail-icon"></i>
+        </div>
+        <input type="text" placeholder="件名" />
+        <textarea rows="10" placeholder="本文"></textarea>
+        <div class="verify-toggle-wrapper">
+          <label class="send-toggle">
+            <input type="checkbox" id="sendToggle" />
+            <span class="slider"></span>
+          </label>
+          <span class="verify-label">送信を許可</span>
+        </div>
+        <button class="send" disabled>
+          <i class="bi bi-send-fill"></i> SEND
+        </button>
+      </div>
+    `;
+
+    const picker = document.getElementById('picker');
+    const items = picker.querySelectorAll('.picker-item');
+    const itemHeight = 40;
+
+    function updatePicker() {
+      const scrollCenter = picker.scrollTop + picker.clientHeight / 2;
+      items.forEach((item) => {
+        const itemCenter = item.offsetTop + itemHeight / 2;
+        const distance = Math.abs(scrollCenter - itemCenter);
+        const scale = Math.max(0.85, 1 - distance / 200);
+        const opacity = Math.max(0.3, 1 - distance / 120);
+        item.style.transform = `scale(${scale})`;
+        item.style.opacity = opacity;
+        if (distance < itemHeight / 2) {
+          item.classList.add('selected');
+        } else {
+          item.classList.remove('selected');
+        }
+      });
+    }
+
+    picker.scrollTo({ top: itemHeight, behavior: 'auto' });
+    updatePicker();
+
+    picker.addEventListener('scroll', () => {
+      updatePicker();
+    });
+
+    const sendToggle = document.getElementById('sendToggle');
+    const sendButton = document.querySelector('.mail-container button.send');
+
+    sendToggle.addEventListener('change', () => {
+      sendButton.disabled = !sendToggle.checked;
+    });
+
+    sendButton.addEventListener('click', () => {
+      if (sendToggle.checked) {
+        actionSheet.classList.remove('visible');
+        document.body.classList.remove('action-sheet-open');
+      }
+    });
+
+    actionSheet.classList.add('visible');
+  });
+
+const showBtn = document.getElementById('showIdBtn');
+    const xButton = document.getElementById('xButton');
+    const idViewer = document.getElementById('idViewer');
+    const idCard = document.getElementById('idCard');
+
+    let isAnimating = false;
+
+    showBtn.addEventListener('click', () => {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      // Fade in the viewer and scale the card
+      idViewer.classList.add('visible');
+
+      // Do NOT hide the button
+      // showBtn.classList.add('hidden'); // <-- removed
+
+      setTimeout(() => {
+        idCard.classList.add('visible');
+      }, 10); // slight delay for smoother transition
+
+      // Show X button after card is fully in
+      setTimeout(() => {
+        xButton.classList.add('visible');
+        isAnimating = false;
+      }, 300);
+    });
+
+    xButton.addEventListener('click', () => {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      xButton.classList.remove('visible');
+      idCard.classList.remove('visible');
+
+      setTimeout(() => {
+        idViewer.classList.remove('visible');
+
+        // Do NOT show the button, because it was never hidden
+        // a.classList.remove('hidden'); // <-- removed
+
+        isAnimating = false;
+      }, 300);
+    });
+
+</script>
+</body>
+</html>
