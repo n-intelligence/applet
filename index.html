@@ -1258,27 +1258,30 @@
 
     // Initialize state from Firestore
     async function initializeState() {
-      try {
-        const docSnap = await getDoc(timeLogDocRef());
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data['終了']) {
-            step = 2;
-          } else if (data['到着']) {
-            step = 1;
-          } else if (data['出発']) {
-            step = 0;
-          } else {
-            step = 0;
-          }
-        }
-      } catch (e) {
-        console.error('Error initializing state:', e);
-        step = 0;
-      }
-      updateHighlight();
-      await updatePanelText();
+  try {
+    const docSnap = await getDoc(timeLogDocRef());
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+
+      // Determine highest completed step index
+      let highestStepCompleted = -1;
+      if (data['終了']) highestStepCompleted = 2;
+      else if (data['到着']) highestStepCompleted = 1;
+      else if (data['出発']) highestStepCompleted = 0;
+
+      // Set step to next step to log:
+      // If all done (highestStepCompleted === 2), reset to 0 to start fresh
+      step = (highestStepCompleted + 1) % steps.length;
+    } else {
+      step = 0; // No data yet, start at 出発
     }
+  } catch (e) {
+    console.error('Error initializing state:', e);
+    step = 0;
+  }
+  updateHighlight();
+  await updatePanelText();
+}
 
     function getMaxX() {
       return slider.offsetWidth - handle.offsetWidth - 8;
