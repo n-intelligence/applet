@@ -1426,7 +1426,28 @@
     }
 
     // Initialize UI state on load
+initializeState();
+
+// Update state when tab becomes visible again
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
     initializeState();
+  }
+});
+
+// Auto refresh at midnight JST every day
+function scheduleMidnightRefresh() {
+  const now = jstDate();
+  const tomorrow = new Date(now);
+  tomorrow.setHours(24, 0, 0, 0); // next midnight JST
+  const msUntilMidnight = tomorrow - now;
+
+  setTimeout(async () => {
+    await initializeState();
+    scheduleMidnightRefresh(); // schedule next midnight again
+  }, msUntilMidnight);
+}
+scheduleMidnightRefresh();
 
     // --- The rest of your unchanged code for buttons, action sheet, ID card, etc. ---
 
