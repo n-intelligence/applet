@@ -1461,7 +1461,8 @@ function closeActionSheet() {
 }
 sheetCloseBtn.addEventListener('click', closeActionSheet);
 
-phoneButton.addEventListener('click', () => {
+phoneButton.addEventListener('click', (e) => {
+  handleTap(e, phoneButton);  // Add this line to trigger pressed effect
   document.querySelector('#actionSheet .sheet-content').innerHTML = `
     <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
       <i class="bi bi-person-fill icon-left"></i>
@@ -1503,7 +1504,8 @@ phoneButton.addEventListener('click', () => {
   actionSheet.classList.add('visible');
 });
 
-mailButton.addEventListener('click', () => {
+mailButton.addEventListener('click', (e) => {
+  handleTap(e, mailButton);  // Add this line to trigger pressed effect
   document.querySelector('#actionSheet .sheet-content').innerHTML = `
     <div class="mail-container">
       <div class="picker-wrapper">
@@ -1532,6 +1534,9 @@ mailButton.addEventListener('click', () => {
       </button>
     </div>
   `;
+  actionSheet.classList.add('visible');
+});
+
 
   const picker = document.getElementById('picker');
   const items = picker.querySelectorAll('.picker-item');
