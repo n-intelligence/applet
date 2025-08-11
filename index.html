@@ -1241,9 +1241,17 @@
   const db = getFirestore(app);
 
   // Helper functions
-  const jstDate = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-  const todayStr = () => jstDate().toISOString().split('T')[0];
-  const timeLogDocRef = () => doc(db, "TimeLog", todayStr());
+const jstDate = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+
+const todayStr = () => {
+  const now = jstDate();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const timeLogDocRef = () => doc(db, "TimeLog", todayStr());
 
   // Wait for DOM ready
   window.addEventListener('load', () => {
@@ -1629,3 +1637,4 @@ window.callNumber = callNumber;
 
 </body>
 </html>
+
