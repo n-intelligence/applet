@@ -1258,30 +1258,30 @@
 
     // Initialize state from Firestore
     async function initializeState() {
-      try {
-        const docSnap = await getDoc(timeLogDocRef());
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+  try {
+    const docSnap = await getDoc(timeLogDocRef());
+    if (docSnap.exists()) {
+      const data = docSnap.data();
 
-          // Determine highest completed step index
-          let highestStepCompleted = -1;
-          if (data['終了']) highestStepCompleted = 2;
-          else if (data['到着']) highestStepCompleted = 1;
-          else if (data['出発']) highestStepCompleted = 0;
+      // Determine highest completed step index
+      let highestStepCompleted = -1;
+      if (data['終了']) highestStepCompleted = 2;
+      else if (data['到着']) highestStepCompleted = 1;
+      else if (data['出発']) highestStepCompleted = 0;
 
-          // Set step to next step to log:
-          // If all done (highestStepCompleted === 2), reset to 0 to start fresh
-          step = (highestStepCompleted + 1) % steps.length;
-        } else {
-          step = 0; // No data yet, start at 出発
-        }
-      } catch (e) {
-        console.error('Error initializing state:', e);
-        step = 0;
-      }
-      updateHighlight();
-      await updatePanelText();
+      // Set step to next step to log:
+      // If all done (highestStepCompleted === 2), reset to 0 to start fresh
+      step = (highestStepCompleted + 1) % steps.length;
+    } else {
+      step = 0; // No data yet, start at 出発
     }
+  } catch (e) {
+    console.error('Error initializing state:', e);
+    step = 0;
+  }
+  updateHighlight();
+  await updatePanelText();
+}
 
     function getMaxX() {
       return slider.offsetWidth - handle.offsetWidth - 8;
@@ -1426,210 +1426,205 @@
     }
 
     // Initialize UI state on load
+initializeState();
+
+// Update state when tab becomes visible again
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
     initializeState();
+  }
+});
 
-    // Update state when tab becomes visible again
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        initializeState();
-      }
-    });
+// Auto refresh at midnight JST every day
+function scheduleMidnightRefresh() {
+  const now = jstDate();
+  const tomorrow = new Date(now);
+  tomorrow.setHours(24, 0, 0, 0); // next midnight JST
+  const msUntilMidnight = tomorrow - now;
 
-    // Auto refresh at midnight JST every day
-    function scheduleMidnightRefresh() {
-      const now = jstDate();
-      const tomorrow = new Date(now);
-      tomorrow.setHours(24, 0, 0, 0); // next midnight JST
-      const msUntilMidnight = tomorrow - now;
-
-      setTimeout(async () => {
-        await initializeState();
-        scheduleMidnightRefresh(); // schedule next midnight again
-      }, msUntilMidnight);
-    }
-    scheduleMidnightRefresh();
+  setTimeout(async () => {
+    await initializeState();
+    scheduleMidnightRefresh(); // schedule next midnight again
+  }, msUntilMidnight);
+}
+scheduleMidnightRefresh();
 
     // --- The rest of your unchanged code for buttons, action sheet, ID card, etc. ---
 
-    const actionSheet = document.getElementById('actionSheet');
-    const sheetCloseBtn = document.getElementById('sheetCloseBtn');
+const actionSheet = document.getElementById('actionSheet');
+const sheetCloseBtn = document.getElementById('sheetCloseBtn');
+const phoneButton = document.querySelector('.phone-panel .bi-telephone-fill').closest('.app-button');
+const mailButton = document.querySelector('.phone-panel .bi-envelope-fill').closest('.app-button');
 
-    const phoneIcon = document.querySelector('.phone-panel .bi-telephone-fill');
-    const mailIcon = document.querySelector('.phone-panel .bi-envelope-fill');
+function closeActionSheet() {
+  actionSheet.classList.remove('visible');
+}
+sheetCloseBtn.addEventListener('click', closeActionSheet);
 
-    const phoneButton = phoneIcon ? phoneIcon.closest('.app-button') : null;
-    const mailButton = mailIcon ? mailIcon.closest('.app-button') : null;
+phoneButton.addEventListener('click', () => {
+  document.querySelector('#actionSheet .sheet-content').innerHTML = `
+    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+      <i class="bi bi-person-fill icon-left"></i>
+      <div class="card-text">
+        <div class="contact-name">XX支店</div>
+        <div class="contact-phone">000-0000-0000</div>
+        <div class="contact-details">contact 1</div>
+      </div>
+      <i class="bi bi-chevron-right chevron-right"></i>
+    </button>
+    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+      <i class="bi bi-buildings-fill icon-left"></i>
+      <div class="card-text">
+        <div class="contact-name">XX本社</div>
+        <div class="contact-phone">000-0000-0000</div>
+        <div class="contact-details">contact 2</div>
+      </div>
+      <i class="bi bi-chevron-right chevron-right"></i>
+    </button>
+    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+      <i class="bi bi-exclamation-circle-fill icon-left"></i>
+      <div class="card-text">
+        <div class="contact-name">緊急連絡</div>
+        <div class="contact-phone">000-0000-0000</div>
+        <div class="contact-details">contact 3</div>
+      </div>
+      <i class="bi bi-chevron-right chevron-right"></i>
+    </button>
+    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+      <i class="bi bi-box-seam-fill icon-left"></i>
+      <div class="card-text">
+        <div class="contact-name">XXXX管理事務所</div>
+        <div class="contact-phone">000-0000-0000</div>
+        <div class="contact-details">contact 4</div>
+      </div>
+      <i class="bi bi-chevron-right chevron-right"></i>
+    </button>
+  `;
+  actionSheet.classList.add('visible');
+});
 
-    function closeActionSheet() {
-      actionSheet.classList.remove('visible');
-    }
-    sheetCloseBtn.addEventListener('click', closeActionSheet);
+mailButton.addEventListener('click', () => {
+  document.querySelector('#actionSheet .sheet-content').innerHTML = `
+    <div class="mail-container">
+      <div class="picker-wrapper">
+        <ul class="picker-list" id="picker">
+          <li class="picker-item empty"></li>
+          <li class="picker-item">X1@XXXXX.com</li>
+          <li class="picker-item">X2@XXXXX.com</li>
+          <li class="picker-item">X3@XXXXX.com</li>
+          <li class="picker-item">X4@XXXXX.com</li>
+          <li class="picker-item empty"></li>
+        </ul>
+        <div class="picker-highlight"></div>
+        <i class="bi bi-envelope-fill picker-mail-icon"></i>
+      </div>
+      <input type="text" placeholder="件名" />
+      <textarea rows="10" placeholder="本文"></textarea>
+      <div class="verify-toggle-wrapper">
+        <label class="send-toggle">
+          <input type="checkbox" id="sendToggle" />
+          <span class="slider"></span>
+        </label>
+        <span class="verify-label">送信を許可</span>
+      </div>
+      <button class="send" disabled>
+        <i class="bi bi-send-fill"></i> SEND
+      </button>
+    </div>
+  `;
 
-    function callNumber(phoneNumber) {
-      window.location.href = 'tel:' + phoneNumber;
-    }
+  const picker = document.getElementById('picker');
+  const items = picker.querySelectorAll('.picker-item');
+  const itemHeight = 40;
 
-    function handleTap(event, element) {
-      element.classList.add('pressed');
-      setTimeout(() => {
-        element.classList.remove('pressed');
-      }, 250);
-    }
-
-    // Make callNumber accessible to inline onclicks
-    window.callNumber = callNumber;
-
-    if (phoneButton) {
-      phoneButton.addEventListener('click', () => {
-        document.querySelector('#actionSheet .sheet-content').innerHTML = `
-          <button class="card-wrapper" onclick="callNumber('0000000000')">
-            <i class="bi bi-person-fill icon-left"></i>
-            <div class="card-text">
-              <div class="contact-name">XX支店</div>
-              <div class="contact-phone">000-0000-0000</div>
-              <div class="contact-details">contact 1</div>
-            </div>
-            <i class="bi bi-chevron-right chevron-right"></i>
-          </button>
-          <button class="card-wrapper" onclick="callNumber('0000000000')">
-            <i class="bi bi-buildings-fill icon-left"></i>
-            <div class="card-text">
-              <div class="contact-name">XX本社</div>
-              <div class="contact-phone">000-0000-0000</div>
-              <div class="contact-details">contact 2</div>
-            </div>
-            <i class="bi bi-chevron-right chevron-right"></i>
-          </button>
-          <button class="card-wrapper" onclick="callNumber('0000000000')">
-            <i class="bi bi-exclamation-circle-fill icon-left"></i>
-            <div class="card-text">
-              <div class="contact-name">緊急連絡</div>
-              <div class="contact-phone">000-0000-0000</div>
-              <div class="contact-details">contact 3</div>
-            </div>
-            <i class="bi bi-chevron-right chevron-right"></i>
-          </button>
-          <button class="card-wrapper" onclick="callNumber('0000000000')">
-            <i class="bi bi-box-seam-fill icon-left"></i>
-            <div class="card-text">
-              <div class="contact-name">XXXX管理事務所</div>
-              <div class="contact-phone">000-0000-0000</div>
-              <div class="contact-details">contact 4</div>
-            </div>
-            <i class="bi bi-chevron-right chevron-right"></i>
-          </button>
-        `;
-        actionSheet.classList.add('visible');
-      });
-    }
-
-    if (mailButton) {
-      mailButton.addEventListener('click', () => {
-        document.querySelector('#actionSheet .sheet-content').innerHTML = `
-          <div class="mail-container">
-            <div class="picker-wrapper">
-              <ul class="picker-list" id="picker">
-                <li class="picker-item empty"></li>
-                <li class="picker-item">X1@XXXXX.com</li>
-                <li class="picker-item">X2@XXXXX.com</li>
-                <li class="picker-item">X3@XXXXX.com</li>
-                <li class="picker-item">X4@XXXXX.com</li>
-                <li class="picker-item empty"></li>
-              </ul>
-              <div class="picker-highlight"></div>
-              <i class="bi bi-envelope-fill picker-mail-icon"></i>
-            </div>
-            <input type="text" placeholder="件名" />
-            <textarea rows="10" placeholder="本文"></textarea>
-            <div class="verify-toggle-wrapper">
-              <label class="send-toggle">
-                <input type="checkbox" id="sendToggle" />
-                <span class="slider"></span>
-              </label>
-              <span class="verify-label">送信を許可</span>
-            </div>
-            <button class="send" disabled>
-              <i class="bi bi-send-fill"></i> SEND
-            </button>
-          </div>
-        `;
-
-        const picker = document.getElementById('picker');
-        const items = picker.querySelectorAll('.picker-item');
-        const itemHeight = 40;
-
-        function updatePicker() {
-          const scrollCenter = picker.scrollTop + picker.clientHeight / 2;
-          items.forEach((item) => {
-            const itemCenter = item.offsetTop + itemHeight / 2;
-            const distance = Math.abs(scrollCenter - itemCenter);
-            const scale = Math.max(0.85, 1 - distance / 200);
-            const opacity = Math.max(0.3, 1 - distance / 120);
-            item.style.transform = `scale(${scale})`;
-            item.style.opacity = opacity;
-            if (distance < itemHeight / 2) {
-              item.classList.add('selected');
-            } else {
-              item.classList.remove('selected');
-            }
-          });
-        }
-
-        picker.scrollTo({ top: itemHeight, behavior: 'auto' });
-        updatePicker();
-
-        picker.addEventListener('scroll', updatePicker);
-
-        const sendToggle = document.getElementById('sendToggle');
-        const sendButton = document.querySelector('.mail-container button.send');
-
-        sendToggle.addEventListener('change', () => {
-          sendButton.disabled = !sendToggle.checked;
-        });
-
-        sendButton.addEventListener('click', () => {
-          if (sendToggle.checked) {
-            actionSheet.classList.remove('visible');
-            document.body.classList.remove('action-sheet-open');
-          }
-        });
-
-        actionSheet.classList.add('visible');
-      });
-    }
-
-    // ID card logic unchanged
-    const showBtn = document.getElementById('showIdBtn');
-    const xButton = document.getElementById('xButton');
-    const idViewer = document.getElementById('idViewer');
-    const idCard = document.getElementById('idCard');
-
-    let isAnimating = false;
-
-    showBtn.addEventListener('click', () => {
-      if (isAnimating) return;
-      isAnimating = true;
-      idViewer.classList.add('visible');
-      setTimeout(() => {
-        idCard.classList.add('visible');
-      }, 10);
-      setTimeout(() => {
-        xButton.classList.add('visible');
-        isAnimating = false;
-      }, 300);
+  function updatePicker() {
+    const scrollCenter = picker.scrollTop + picker.clientHeight / 2;
+    items.forEach((item) => {
+      const itemCenter = item.offsetTop + itemHeight / 2;
+      const distance = Math.abs(scrollCenter - itemCenter);
+      const scale = Math.max(0.85, 1 - distance / 200);
+      const opacity = Math.max(0.3, 1 - distance / 120);
+      item.style.transform = `scale(${scale})`;
+      item.style.opacity = opacity;
+      if (distance < itemHeight / 2) {
+        item.classList.add('selected');
+      } else {
+        item.classList.remove('selected');
+      }
     });
+  }
 
-    xButton.addEventListener('click', () => {
-      if (isAnimating) return;
-      isAnimating = true;
-      xButton.classList.remove('visible');
-      idCard.classList.remove('visible');
-      setTimeout(() => {
-        idViewer.classList.remove('visible');
-        isAnimating = false;
-      }, 300);
-    });
+  picker.scrollTo({ top: itemHeight, behavior: 'auto' });
+  updatePicker();
+
+  picker.addEventListener('scroll', updatePicker);
+
+  const sendToggle = document.getElementById('sendToggle');
+  const sendButton = document.querySelector('.mail-container button.send');
+
+  sendToggle.addEventListener('change', () => {
+    sendButton.disabled = !sendToggle.checked;
   });
+
+  sendButton.addEventListener('click', () => {
+    if (sendToggle.checked) {
+      actionSheet.classList.remove('visible');
+      document.body.classList.remove('action-sheet-open');
+    }
+  });
+
+  actionSheet.classList.add('visible');
+});
+
+function callNumber(phoneNumber) {
+  window.location.href = 'tel:' + phoneNumber;
+}
+
+function handleTap(event, element) {
+  element.classList.add('pressed');
+  setTimeout(() => {
+    element.classList.remove('pressed');
+  }, 250);
+}
+
+// ID card logic unchanged
+const showBtn = document.getElementById('showIdBtn');
+const xButton = document.getElementById('xButton');
+const idViewer = document.getElementById('idViewer');
+const idCard = document.getElementById('idCard');
+
+let isAnimating = false;
+
+showBtn.addEventListener('click', () => {
+  if (isAnimating) return;
+  isAnimating = true;
+  idViewer.classList.add('visible');
+  setTimeout(() => {
+    idCard.classList.add('visible');
+  }, 10);
+  setTimeout(() => {
+    xButton.classList.add('visible');
+    isAnimating = false;
+  }, 300);
+});
+
+xButton.addEventListener('click', () => {
+  if (isAnimating) return;
+  isAnimating = true;
+  xButton.classList.remove('visible');
+  idCard.classList.remove('visible');
+  setTimeout(() => {
+    idViewer.classList.remove('visible');
+    isAnimating = false;
+  }, 300);
+});
+
+// *** THE CRUCIAL FIX TO MAKE handleTap & callNumber ACCESSIBLE TO INLINE ONCLICK ***
+
+window.handleTap = handleTap;
+window.callNumber = callNumber;
+
+}); // end load event listener
 </script>
 
 </body>
