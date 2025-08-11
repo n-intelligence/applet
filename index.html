@@ -1378,60 +1378,65 @@ const timeLogDocRef = () => doc(db, "TimeLog", todayStr());
     }
 
     async function endDrag() {
-      if (!isDragging) return;
-      isDragging = false;
-      const maxX = getMaxX();
-      if (currentX > maxX * 0.9) {
-        currentX = maxX;
-        handle.style.left = `${maxX + 4}px`;
-        slider.classList.add('connected');
+  if (!isDragging) return;
+  isDragging = false;
+  const maxX = getMaxX();
+  if (currentX > maxX * 0.9) {
+    currentX = maxX;
+    handle.style.left = `${maxX + 4}px`;
+    slider.classList.add('connected');
 
-        const now = jstDate();
-        const timeString = now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0');
-        const labelMap = ['出発', '到着', '終了'];
+    // Capture the time string once here
+    const now = jstDate();
+    const timeString = now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0');
+    const labelMap = ['出発', '到着', '終了'];
 
-        try {
-          const docSnap = await getDoc(timeLogDocRef());
-          let existingData = {};
-          if (docSnap.exists()) {
-            existingData = docSnap.data();
-          }
-          const updatedData = {
-            ...existingData,
-            date: todayStr(),
-            [labelMap[step]]: timeString
-          };
-          await setDoc(timeLogDocRef(), updatedData);
+    // Immediately start slider reset animation
+    setTimeout(() => {
+      slider.classList.remove('connected');
+      handle.classList.add('resetting');
+      handle.style.left = '4px';
+      currentX = 0;
+      step = (step + 1) % steps.length;
+      updateHighlight();
+      setTimeout(() => handle.classList.remove('resetting'), 400);
+    }, 900);
 
-          await updatePanelText();
-
-          setTimeout(() => {
-            slider.classList.remove('connected');
-            handle.classList.add('resetting');
-            handle.style.left = '4px';
-            currentX = 0;
-            step = (step + 1) % steps.length;
-            updateHighlight();
-            setTimeout(() => handle.classList.remove('resetting'), 400);
-          }, 900);
-        } catch (e) {
-          console.error('Error writing to Firestore:', e);
+    // Firestore update after UI reset started (no await here)
+    (async () => {
+      try {
+        const docSnap = await getDoc(timeLogDocRef());
+        let existingData = {};
+        if (docSnap.exists()) {
+          existingData = docSnap.data();
         }
-      } else {
-        currentX = 0;
-        handle.style.left = '4px';
-        slider.classList.remove('connected');
-        slider.style.background = 'rgba(255, 255, 255, 0.08)';
-        slider.style.backdropFilter = 'blur(12px)';
-        slider.style.webkitBackdropFilter = 'blur(12px)';
-        slider.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+        const updatedData = {
+          ...existingData,
+          date: todayStr(),
+          [labelMap[step]]: timeString
+        };
+        await setDoc(timeLogDocRef(), updatedData);
+        await updatePanelText();
+      } catch (e) {
+        console.error('Error writing to Firestore:', e);
       }
+    })();
 
-      document.removeEventListener('touchmove', onDrag);
-      document.removeEventListener('mousemove', onDrag);
-      document.removeEventListener('touchend', endDrag);
-      document.removeEventListener('mouseup', endDrag);
-    }
+  } else {
+    currentX = 0;
+    handle.style.left = '4px';
+    slider.classList.remove('connected');
+    slider.style.background = 'rgba(255, 255, 255, 0.08)';
+    slider.style.backdropFilter = 'blur(12px)';
+    slider.style.webkitBackdropFilter = 'blur(12px)';
+    slider.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+  }
+
+  document.removeEventListener('touchmove', onDrag);
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('touchend', endDrag);
+  document.removeEventListener('mouseup', endDrag);
+}
 
     // Initialize UI state on load
 initializeState();
