@@ -2,7 +2,7 @@ const CACHE_NAME = 'app-cache-v1';
 const FILES_TO_CACHE = [
   '/',
   '/index.html',
-  '/4splash-1170x2532.png',
+  '/splash-1170x2532.png',
   '/180.png',
   // add any other assets like CSS, JS here
 ];
