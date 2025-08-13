@@ -39,22 +39,6 @@
       justify-content: flex-start;
     }
 
-  body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100dvh; /* full viewport height */
-  background: linear-gradient(
-    to bottom,
-    #1A1C23 0%,        /* solid top color */
-    #1A1C23 40%,       /* still solid until ~40% */
-    #007aff 100%       /* subtle gradient to slightly lighter color */
-  );
-  z-index: -1; /* behind content */
-}
-
     #ios-status-bar-bg {
       position: fixed;
       top: 0;
