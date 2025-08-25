@@ -1236,8 +1236,12 @@
   border-top-right-radius: 20px;
   border-bottom-right-radius: 20px;
   transform: translateX(0);
-  transition: transform 0.3s ease;
-  opacity: 1;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+  /* --- NEW --- */
+  box-shadow:
+    inset 1px 1px 2px rgba(255,255,255,0.05),
+    inset -1px -1px 2px rgba(0,0,0,0.2);
 }
 
 .side-tab.hidden {
