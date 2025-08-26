@@ -1522,10 +1522,10 @@ background: #dbdede;
 
 // Firebase imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, getDocFromCache } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { getFirestore, doc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
-// Your Firebase config
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyD4PUPUa2Ggl8_wKNBNhTFpGVsx_nJLfjY",
   authDomain: "n-intelligence.firebaseapp.com",
@@ -1535,15 +1535,12 @@ const firebaseConfig = {
   appId: "1:67594213950:web:8a2985240b55d82adfcf6f"
 };
 
-// Initialize Firebase and Firestore
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-// Initialize Firebase Auth
 const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 
-// --- Redirect to login if not logged in ---
+// Redirect to login if user not logged in
 onAuthStateChanged(auth, user => {
   if (!user) {
     if (!window.location.pathname.endsWith('login.html')) {
