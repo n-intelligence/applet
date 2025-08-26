@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ログイン</title>
+
+<!-- PWA Basics -->
+<meta name="theme-color" content="#1a1c23">
+
+<!-- iOS PWA support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My App">
+
+<!-- Bootstrap Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+  background-color: #1a1c23;
+  width: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Logo */
+.login-logo {
+  width: 200px;
+  margin-bottom: 40px;
+}
+
+/* Login card */
+.login-card {
+  background: rgba(44, 53, 76, 0.3);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    4px 4px 8px rgba(18,19,23,0.8),
+   -4px -4px 8px rgba(32,34,42,0.7),
+    inset 1px 1px 2px rgba(255,255,255,0.05),
+    inset -1px -1px 2px rgba(0,0,0,0.2);
+  border-radius: 20px;
+  padding: 40px 24px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+/* Google button */
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f7f6f3;
+  font-weight: 700;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 
+    inset 1px 1px 2px rgba(255,255,255,0.1),
+    inset -1px -1px 2px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.google-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.google-btn i {
+  font-size: 20px;
+}
+
+/* Small info text */
+.login-info {
+  font-size: 12px;
+  color: rgba(247,246,243,0.6);
+  text-align: center;
+  line-height: 1.3;
+}
+</style>
+</head>
+<body>
+
+<img src="logo.png" alt="アプリのロゴ" class="login-logo">
+
+<div class="login-card">
+  <button class="google-btn" id="googleLoginBtn">
+    <i class="bi bi-google"></i>
+    Googleでログイン
+  </button>
+  <div class="login-info">
+    許可されたGoogleアカウントのみアクセスできます。
+  </div>
+</div>
+
+<!-- Firebase + Login Script -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyD4PUPUa2Ggl8_wKNBNhTFpGVsx_nJLfjY",
+  authDomain: "n-intelligence.firebaseapp.com",
+  projectId: "n-intelligence",
+  storageBucket: "n-intelligence.firebasestorage.app",
+  messagingSenderId: "67594213950",
+  appId: "1:67594213950:web:8a2985240b55d82adfcf6f"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+// Login button
+const loginBtn = document.getElementById('googleLoginBtn');
+loginBtn.addEventListener('click', async () => {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    // Redirect to main app after successful login
+    window.location.href = "index.html"; // <-- replace with your main app file
+  } catch (error) {
+    console.error(error); // fail silently, no pop-up
+  }
+});
+</script>
+
+</body>
+</html>
