@@ -120,8 +120,7 @@ import {
   signInWithRedirect, 
   getRedirectResult, 
   setPersistence, 
-  browserLocalPersistence, 
-  onAuthStateChanged 
+  browserLocalPersistence 
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 // Firebase config
@@ -143,23 +142,16 @@ const provider = new GoogleAuthProvider();
 setPersistence(auth, browserLocalPersistence)
   .catch(error => console.error('Auth persistence error:', error));
 
-// Redirect already-logged-in users to index.html
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    window.location.href = "index.html";
-  }
-});
-
-// Handle login redirect result
+// Handle login redirect result first
 getRedirectResult(auth)
   .then(result => {
     if (result.user) {
-      window.location.href = "index.html";
+      window.location.replace("index.html"); // use replace to avoid history loop
     }
   })
   .catch(error => console.error('Redirect login error:', error));
 
-// Login button triggers redirect login
+// Only trigger redirect login on button click
 const loginBtn = document.getElementById('googleLoginBtn');
 loginBtn.addEventListener('click', () => {
   signInWithRedirect(auth, provider);
