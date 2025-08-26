@@ -146,7 +146,7 @@ setPersistence(auth, browserLocalPersistence)
 getRedirectResult(auth)
   .then(result => {
     if (result.user) {
-      window.location.replace("index.html"); // use replace to avoid history loop
+      window.location.replace("index.html"); // avoids history loop
     }
   })
   .catch(error => console.error('Redirect login error:', error));
