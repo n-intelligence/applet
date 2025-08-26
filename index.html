@@ -1523,7 +1523,7 @@ background: #dbdede;
 // Firebase imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, getDocFromCache } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 // Your Firebase config
 const firebaseConfig = {
@@ -1543,11 +1543,8 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// --- Proper login redirect for index.html ---
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-
+// --- Redirect to login if not logged in ---
 onAuthStateChanged(auth, user => {
-  // If no user is logged in, send them to login.html
   if (!user) {
     if (!window.location.pathname.endsWith('login.html')) {
       window.location.href = 'login.html';
