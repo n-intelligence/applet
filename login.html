@@ -132,25 +132,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// --- iOS-friendly persistent login and redirect ---
+// --- iOS-friendly persistent login ---
 import { setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 setPersistence(auth, browserLocalPersistence)
-  .then(() => {
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        // User is signed in → go to main page
-        if (window.location.pathname.endsWith('login.html')) {
-          window.location.href = 'index.html';
-        }
-      } else {
-        // User is not signed in → stay on login page
-        if (!window.location.pathname.endsWith('login.html')) {
-          window.location.href = 'login.html';
-        }
-      }
-    });
-  })
   .catch(error => console.error('Auth persistence error:', error));
 
 // Login button
@@ -158,6 +143,7 @@ const loginBtn = document.getElementById('googleLoginBtn');
 loginBtn.addEventListener('click', async () => {
   try {
     const result = await signInWithPopup(auth, provider);
+    // Redirect only after successful login
     window.location.href = "index.html";
   } catch (error) {
     console.error(error);
