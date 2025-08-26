@@ -1543,22 +1543,19 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// --- Redirect if not logged in ---
+// --- iOS-friendly login redirect ---
 auth.onAuthStateChanged(user => {
-  if (user) {
-    console.log('User signed in:', user.email);
-    if (window.location.pathname.endsWith('login.html')) {
-      window.location.href = 'index.html';
-    }
-  } else {
-    console.log('No user signed in');
-    if (!window.location.pathname.endsWith('login.html')) {
-      // iOS-specific delay to avoid false redirect
-      setTimeout(() => {
+  setTimeout(() => {
+    if (user) {
+      if (window.location.pathname.endsWith('login.html')) {
+        window.location.href = 'index.html';
+      }
+    } else {
+      if (!window.location.pathname.endsWith('login.html')) {
         window.location.href = 'login.html';
-      }, 200); // 200ms works well on iOS
+      }
     }
-  }
+  }, 200); // tiny delay fixes iOS Safari timing
 });
 
   // Helper functions
