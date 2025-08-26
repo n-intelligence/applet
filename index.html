@@ -1543,19 +1543,17 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// --- Redirect if not logged in ---
-// --- iOS-friendly login redirect ---
-import { setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+// --- Proper login redirect for index.html ---
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
-// Ensure persistent login
-setPersistence(auth, browserLocalPersistence)
-  .then(() => {
-    // Only redirect if no user is logged in
-    if (!auth.currentUser && !window.location.pathname.endsWith('login.html')) {
+onAuthStateChanged(auth, user => {
+  // If no user is logged in, send them to login.html
+  if (!user) {
+    if (!window.location.pathname.endsWith('login.html')) {
       window.location.href = 'login.html';
     }
-  })
-  .catch(error => console.error('Auth persistence error:', error));
+  }
+});
 
   // Helper functions
 const jstDate = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
