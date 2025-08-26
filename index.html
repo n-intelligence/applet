@@ -1546,13 +1546,17 @@ const provider = new GoogleAuthProvider();
 // --- Redirect if not logged in ---
 auth.onAuthStateChanged(user => {
   if (user) {
+    console.log('User signed in:', user.email);
     if (window.location.pathname.endsWith('login.html')) {
       window.location.href = 'index.html';
     }
-    console.log('User signed in:', user.email);
   } else {
+    console.log('No user signed in');
     if (!window.location.pathname.endsWith('login.html')) {
-      window.location.href = 'login.html';
+      // iOS-specific delay to avoid false redirect
+      setTimeout(() => {
+        window.location.href = 'login.html';
+      }, 200); // 200ms works well on iOS
     }
   }
 });
