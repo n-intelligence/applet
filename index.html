@@ -1543,15 +1543,16 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 // --- Redirect if not logged in ---
-let authInitialized = false;
-
 auth.onAuthStateChanged(user => {
-  if (!authInitialized) {
-    authInitialized = true; // mark that Firebase has finished initializing
-    if (user) {
-      console.log('User signed in:', user.email);
-      // Continue with page logic
-    } else {
+  if (user) {
+    // If user is on login page, send to main app
+    if (window.location.pathname.endsWith('login.html')) {
+      window.location.href = 'index.html';
+    }
+    console.log('User signed in:', user.email);
+  } else {
+    // If user is NOT signed in and not on login page, redirect
+    if (!window.location.pathname.endsWith('login.html')) {
       window.location.href = 'login.html';
     }
   }
