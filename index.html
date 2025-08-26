@@ -1406,7 +1406,7 @@ background: #dbdede;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;">6.0</div>
           <div class="version-date" style="position: absolute; top: 12px; right: 14px; opacity: 0.6; font-family: 'IBM Plex Mono', 'SF Mono', 'Fira Code', monospace; font-size: 14px;">
-            <i class="bi bi-rocket-takeoff" style="font-size: 16px;"></i><span style="margin-left: 6px;">20250708</span>
+            <i class="bi bi-rocket-takeoff" style="font-size: 16px;"></i><span style="margin-left: 6px;">B250708CN94</span>
           </div>
         </div>
       </div>
@@ -1467,7 +1467,7 @@ background: #dbdede;
 
     <div class="id-viewer" id="idViewer">
       <div class="id-card" id="idCard">
-        <img src="https://via.placeholder.com/850x540.png?text=ID+Card"/>
+        <img src="850x540.png?text=ID+Card"/>
       </div>
       <i class="bi bi-x x-button" id="xButton" aria-label="Close ID"></i>
     </div>
@@ -1520,22 +1520,36 @@ background: #dbdede;
 
 <script type="module">
   // Firebase imports
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, getDocFromCache } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
-  // Your Firebase config
-  const firebaseConfig = {
-    apiKey: "AIzaSyD4PUPUa2Ggl8_wKNBNhTFpGVsx_nJLfjY",
-    authDomain: "n-intelligence.firebaseapp.com",
-    projectId: "n-intelligence",
-    storageBucket: "n-intelligence.firebasestorage.app",
-    messagingSenderId: "67594213950",
-    appId: "1:67594213950:web:8a2985240b55d82adfcf6f"
-  };
+// Your Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyD4PUPUa2Ggl8_wKNBNhTFpGVsx_nJLfjY",
+  authDomain: "n-intelligence.firebaseapp.com",
+  projectId: "n-intelligence",
+  storageBucket: "n-intelligence.firebasestorage.app",
+  messagingSenderId: "67594213950",
+  appId: "1:67594213950:web:8a2985240b55d82adfcf6f"
+};
 
-  // Initialize Firebase and Firestore
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+// Initialize Firebase and Firestore
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Initialize Firebase Auth
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+// --- Redirect if not logged in ---
+auth.onAuthStateChanged(user => {
+  if (!user) {
+    // No user signed in, redirect to login screen
+    window.location.href = 'login.html';
+  }
+  // If user exists, the page continues loading
+});
 
   // Helper functions
 const jstDate = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
@@ -2016,7 +2030,11 @@ cancelBtn.addEventListener('click', () => {
 
 // Logout placeholder
 logoutBtn.addEventListener('click', () => {
-  alert("Logout triggered (replace with actual sign-out)");
+  signOut(auth).then(() => {
+    window.location.href = 'login.html';
+  }).catch((error) => {
+    console.error('Logout failed:', error);
+  });
 });
 
 </script>
