@@ -117,10 +117,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebas
 import { 
   getAuth, 
   GoogleAuthProvider, 
-  signInWithRedirect, 
-  getRedirectResult, 
+  signInWithPopup, 
   setPersistence, 
-  browserLocalPersistence 
+  browserLocalPersistence,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 // Firebase config
@@ -142,18 +142,23 @@ const provider = new GoogleAuthProvider();
 setPersistence(auth, browserLocalPersistence)
   .catch(error => console.error('Auth persistence error:', error));
 
-// Handle login redirect result first
-getRedirectResult(auth)
-  .then(result => {
-    if (result.user) {
-      window.location.replace("index.html"); // avoids history loop
-    }
-  })
-  .catch(error => console.error('Redirect login error:', error));
+// Redirect already logged-in users to index.html
+onAuthStateChanged(auth, user => {
+  if (user) {
+    window.location.replace("index.html");
+  }
+});
 
-// Only trigger redirect login on button click
+// Login button triggers popup login
 const loginBtn = document.getElementById('googleLoginBtn');
-loginBtn.addEventListener('click', () => {
-  signInWithRedirect(auth, provider);
+loginBtn.addEventListener('click', async () => {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    if (result.user) {
+      window.location.replace("index.html"); // redirect after successful login
+    }
+  } catch (error) {
+    console.error('Popup login error:', error);
+  }
 });
 </script>
