@@ -1543,13 +1543,17 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 // --- Redirect if not logged in ---
+let authInitialized = false;
+
 auth.onAuthStateChanged(user => {
-  if (user) {
-    // User is signed in, page continues loading
-    console.log('User signed in:', user.email);
-  } else {
-    // No user signed in, redirect to login
-    window.location.href = 'login.html';
+  if (!authInitialized) {
+    authInitialized = true; // mark that Firebase has finished initializing
+    if (user) {
+      console.log('User signed in:', user.email);
+      // Continue with page logic
+    } else {
+      window.location.href = 'login.html';
+    }
   }
 });
 
