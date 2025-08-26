@@ -1540,12 +1540,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Redirect to login if user not logged in
+// --- FIXED: Redirect to login only if NOT on login.html ---
 onAuthStateChanged(auth, user => {
-  if (!user) {
-    if (!window.location.pathname.endsWith('login.html')) {
-      window.location.href = 'login.html';
-    }
+  const currentPage = window.location.pathname.split('/').pop();
+  if (!user && currentPage !== 'login.html') {
+    window.location.href = 'login.html';
   }
 });
 
