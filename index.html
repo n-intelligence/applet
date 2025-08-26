@@ -1544,11 +1544,13 @@ const provider = new GoogleAuthProvider();
 
 // --- Redirect if not logged in ---
 auth.onAuthStateChanged(user => {
-  if (!user) {
-    // No user signed in, redirect to login screen
+  if (user) {
+    // User is signed in, page continues loading
+    console.log('User signed in:', user.email);
+  } else {
+    // No user signed in, redirect to login
     window.location.href = 'login.html';
   }
-  // If user exists, the page continues loading
 });
 
   // Helper functions
