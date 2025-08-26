@@ -1518,11 +1518,10 @@ background: #dbdede;
   <i class="bi bi-check-circle-fill"></i>
 </div>
 
-<script type="module">
-  // Firebase imports
+// Firebase imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, getDocFromCache } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 // Your Firebase config
 const firebaseConfig = {
@@ -1545,13 +1544,11 @@ const provider = new GoogleAuthProvider();
 // --- Redirect if not logged in ---
 auth.onAuthStateChanged(user => {
   if (user) {
-    // If user is on login page, send to main app
     if (window.location.pathname.endsWith('login.html')) {
       window.location.href = 'index.html';
     }
     console.log('User signed in:', user.email);
   } else {
-    // If user is NOT signed in and not on login page, redirect
     if (!window.location.pathname.endsWith('login.html')) {
       window.location.href = 'login.html';
     }
