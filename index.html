@@ -1519,19 +1519,13 @@ background: #dbdede;
 </div>
 
 <script type="module">
-// -------------------- FIREBASE SETUP --------------------
+
+// Firebase imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-  signOut,
-  getIdToken,
-  getRedirectResult,
-  setPersistence,
-  browserLocalPersistence
-} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyD4PUPUa2Ggl8_wKNBNhTFpGVsx_nJLfjY",
   authDomain: "n-intelligence.firebaseapp.com",
@@ -1541,256 +1535,231 @@ const firebaseConfig = {
   appId: "1:67594213950:web:8a2985240b55d82adfcf6f"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-setPersistence(auth, browserLocalPersistence).catch(e => console.warn('setPersistence failed', e));
-
+// --- FIXED: Redirect to login only if NOT on login.html ---
 let currentUserUID = null;
-
-const SESSION_LOGIN_ENDPOINT = '/sessionLogin';
-const SESSION_LOGOUT_ENDPOINT = '/sessionLogout';
-const API_ME_ENDPOINT = '/api/me';
-
-async function checkServerSession() {
-  try {
-    const r = await fetch(API_ME_ENDPOINT, { credentials: 'include' });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch (e) {
-    console.warn('checkServerSession failed', e);
-    return null;
-  }
-}
-
-async function bootstrapAuth() {
-  const server = await checkServerSession();
-  if (server && server.ok) {
-    currentUserUID = server.uid;
-    return;
-  }
-
-  let clientUser = null;
-  await new Promise(resolve => {
-    const unsub = onAuthStateChanged(auth, user => {
-      clientUser = user;
-      unsub();
-      resolve();
-    });
-    setTimeout(resolve, 1500);
-  });
-
-  if (clientUser) {
-    try {
-      const idToken = await getIdToken(clientUser, true);
-      const resp = await fetch(SESSION_LOGIN_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ idToken })
-      });
-      if (resp.ok) {
-        const json = await resp.json();
-        currentUserUID = json.uid;
-        return;
-      } else {
-        console.warn('sessionLogin failed', await resp.text());
-      }
-    } catch (e) {
-      console.error('Error creating server session', e);
-    }
-  }
-
+onAuthStateChanged(auth, user => {
   const currentPage = window.location.pathname.split('/').pop();
-  if (currentPage !== 'login.html') {
-    if (!sessionStorage.getItem('auth_in_progress')) {
-      sessionStorage.setItem('auth_in_progress', '1');
-      window.location.href = 'login.html';
-    }
+  if (!user && currentPage !== 'login.html') {
+    window.location.href = 'login.html';
+  } else if (user) {
+    currentUserUID = user.uid; // store UID for per-user Firestore
   }
-}
+});
 
-async function handleRedirectResultAndCreateSession() {
-  try {
-    const result = await getRedirectResult(auth);
-    if (!result || !result.user) return;
-    const idToken = await getIdToken(result.user, true);
-    const resp = await fetch(SESSION_LOGIN_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ idToken })
-    });
-    if (resp.ok) window.location.href = '/';
-    else console.error('sessionLogin server error', await resp.text());
-  } catch (err) {
-    console.debug('getRedirectResult:', err);
-  }
-}
-
-async function logoutAll() {
-  try {
-    await fetch(SESSION_LOGOUT_ENDPOINT, { method: 'POST', credentials: 'include' });
-  } catch (e) { console.warn('sessionLogout request failed', e); }
-  try { await signOut(auth); } catch (e) { console.warn('client signOut failed', e); }
-  window.location.href = 'login.html';
-}
-
-if (window.location.pathname.split('/').pop() === 'login.html') {
-  handleRedirectResultAndCreateSession();
-}
-
-// -------------------- HELPER FUNCTIONS --------------------
+// --- Helper functions ---
 const jstDate = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+
 const todayStr = () => {
   const now = jstDate();
-  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 };
 
+// NEW: get per-user doc reference
 const timeLogDocRef = () => {
   if (!currentUserUID) throw new Error("User not authenticated yet");
   return doc(db, "Users", currentUserUID, "TimeLog", todayStr());
 };
 
-async function waitForUID() {
-  if (currentUserUID) return currentUserUID;
-  return new Promise(resolve => {
-    const interval = setInterval(() => {
-      if (currentUserUID) { clearInterval(interval); resolve(currentUserUID); }
-    }, 100);
-  });
-}
-
-// -------------------- MAIN APP LOGIC --------------------
-window.addEventListener('load', async () => {
-  await bootstrapAuth();
-  await waitForUID();
-
-  // Elements
+window.addEventListener('load', () => {
+  // Cache elements
   const slider = document.getElementById('slider');
   const handle = document.getElementById('handle');
   const stepPill = document.getElementById('stepPill');
-  const steps = ['step1','step2','step3'];
-  let isDragging = false, startX = 0, currentX = 0, step = 0;
+  const timeInputs = document.getElementById('timeInputs');
+  const steps = ['step1', 'step2', 'step3'];
+  let isDragging = false, startX = 0, currentX = 0;
+  let step = 0;
 
-  // Date display
-  const updateDate = () => {
+  // --- Date display updater ---
+  function updateDate() {
     const now = new Date();
     const weekdayEl = document.getElementById('weekday');
     const monthDayEl = document.getElementById('monthDay');
+
     const weekdays = ['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
     weekdayEl.textContent = weekdays[now.getDay()];
-    monthDayEl.textContent = `${now.getMonth()+1} • ${now.getDate()}`;
-  };
-  updateDate(); setInterval(updateDate, 60000);
 
-  // Initialize state
+    const months = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+    const month = months[now.getMonth()];
+    const day = now.getDate();
+
+    monthDayEl.textContent = `${month} • ${day}`;
+  }
+
+  updateDate();
+  setInterval(updateDate, 1000 * 60);
+
+  // Initialize state from Firestore (per-user)
   async function initializeState() {
-    await waitForUID();
+    if (!currentUserUID) return; // wait until user UID is ready
+
     let docSnap;
-    try { docSnap = await getDoc(timeLogDocRef()); } 
-    catch (e) { console.error("Failed to get time log:", e); return; }
+    try {
+      docSnap = await getDoc(timeLogDocRef());
+    } catch (e) {
+      console.error("Failed to get time log:", e);
+      return;
+    }
 
     if (docSnap.exists()) {
       const data = docSnap.data();
-      let highest = -1;
-      if (data['終了']) highest=2; else if(data['到着']) highest=1; else if(data['出発']) highest=0;
-      step = (highest+1)%steps.length;
-    } else step = 0;
+      let highestStepCompleted = -1;
+      if (data['終了']) highestStepCompleted = 2;
+      else if (data['到着']) highestStepCompleted = 1;
+      else if (data['出発']) highestStepCompleted = 0;
+      step = (highestStepCompleted + 1) % steps.length;
+    } else {
+      step = 0;
+    }
 
     updateHighlight();
     await updatePanelText();
   }
 
-  function getMaxX() { return slider.offsetWidth - handle.offsetWidth - 8; }
+  function getMaxX() {
+    return slider.offsetWidth - handle.offsetWidth - 8;
+  }
 
   function updateHighlight() {
     const highlight = stepPill.querySelector('.highlight');
-    highlight.style.left = `calc(${step*33.33}% + 8px)`;
-    steps.forEach((id,i)=>document.getElementById(id).style.color=(i===step)?'#F7F6F3':'#8e8e93');
+    highlight.style.left = `calc(${step * 33.33}% + 8px)`;
+    steps.forEach((id, i) => {
+      document.getElementById(id).style.color = (i === step) ? '#F7F6F3' : '#8e8e93';
+    });
+    const container = document.getElementById('timeSliderContainer');
     document.getElementById('custominput').value = '6:30 – 15:30';
     document.getElementById('break').value = 60;
-    document.getElementById('timeSliderContainer').classList.add('timeInputs-visible');
+    container.classList.add('timeInputs-visible');
   }
 
   async function updatePanelText() {
-    await waitForUID();
+    if (!currentUserUID) return; // wait until user UID is ready
+
     let docSnap;
-    try { docSnap = await getDoc(timeLogDocRef()); } 
-    catch(e){ console.error("Failed to get time log:",e); return; }
+    try {
+      docSnap = await getDoc(timeLogDocRef());
+    } catch (e) {
+      console.error("Failed to get time log:", e);
+      return;
+    }
 
     const panel = document.querySelector('#history-panel .panel-text');
-    if(!docSnap.exists()){ panel.textContent='送信履歴'; return; }
 
-    const data=docSnap.data();
-    if(data.date !== todayStr()){ panel.textContent='送信履歴'; return; }
+    if (!docSnap.exists()) {
+      panel.textContent = '送信履歴';
+      return;
+    }
 
-    const lines=[];
-    if(data['出発']) lines.push(`<div class="time-line"><span class="label">出発連絡</span><span class="time"><i class="bi bi-toggle-on" style="margin-right:6px;"></i>${data['出発']}</span></div>`);
-    if(data['到着']) lines.push(`<div class="time-line"><span class="label">到着連絡</span><span class="time"><i class="bi bi-toggle-on" style="margin-right:6px;"></i>${data['到着']}</span></div>`);
-    if(data['終了']) lines.push(`<div class="time-line"><span class="label">終了連絡</span><span class="time"><i class="bi bi-toggle-on" style="margin-right:6px;"></i>${data['終了']}</span></div>`);
+    const data = docSnap.data();
+    if (data.date !== todayStr()) {
+      panel.textContent = '送信履歴';
+      return;
+    }
 
-    panel.innerHTML = lines.length>0? lines.join('') : '送信履歴';
+    const lines = [];
+    if (data['出発']) lines.push(`<div class="time-line"><span class="label">出発連絡</span><span class="time"><i class="bi bi-toggle-on" style="margin-right: 6px;"></i>${data['出発']}</span></div>`);
+    if (data['到着']) lines.push(`<div class="time-line"><span class="label">到着連絡</span><span class="time"><i class="bi bi-toggle-on" style="margin-right: 6px;"></i>${data['到着']}</span></div>`);
+    if (data['終了']) lines.push(`<div class="time-line"><span class="label">終了連絡</span><span class="time"><i class="bi bi-toggle-on" style="margin-right: 6px;"></i>${data['終了']}</span></div>`);
+
+    if (lines.length === 0) {
+      panel.textContent = '送信履歴';
+    } else {
+      panel.innerHTML = lines.join('');
+    }
   }
 
-  steps.forEach((id,i)=>{
+  steps.forEach((id, i) => {
     const el = document.getElementById(id);
-    el.style.cursor='pointer';
-    el.addEventListener('click',()=>{ step=i; updateHighlight(); });
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => {
+      step = i;
+      updateHighlight();
+    });
   });
 
-  // Drag handlers
   handle.addEventListener('touchstart', startDrag, { passive: false });
   handle.addEventListener('mousedown', startDrag);
 
   function startDrag(e) {
-    if(slider.classList.contains("connected")) return;
+    if (slider.classList.contains("connected")) return;
     e.preventDefault();
-    isDragging=true; handle.classList.remove('resetting');
-    startX=(e.touches?e.touches[0].clientX:e.clientX)-currentX-4;
-    document.addEventListener('touchmove', onDrag, { passive:false });
+    isDragging = true;
+    handle.classList.remove('resetting');
+    startX = (e.touches ? e.touches[0].clientX : e.clientX) - currentX - 4;
+    document.addEventListener('touchmove', onDrag, { passive: false });
     document.addEventListener('mousemove', onDrag);
     document.addEventListener('touchend', endDrag);
     document.addEventListener('mouseup', endDrag);
   }
 
-  function onDrag(e){
-    if(!isDragging) return;
+  function onDrag(e) {
+    if (!isDragging) return;
     e.preventDefault();
-    const x=e.touches?e.touches[0].clientX:e.clientX;
-    const maxX=getMaxX();
-    currentX=Math.min(Math.max(0,x-startX-4),maxX);
-    handle.style.left=`${4+currentX}px`;
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    const maxX = getMaxX();
+    currentX = Math.min(Math.max(0, x - startX - 4), maxX);
+    updateSlider();
   }
 
-  async function endDrag(){
-    if(!isDragging) return;
-    isDragging=false;
-    const maxX=getMaxX();
-    if(currentX>maxX*0.9){
-      currentX=maxX; handle.style.left=`${maxX+4}px`;
+  function updateSlider() {
+    const maxX = getMaxX();
+    handle.style.left = `${4 + currentX}px`;
+  }
+
+  async function endDrag() {
+    if (!isDragging) return;
+    isDragging = false;
+    const maxX = getMaxX();
+    if (currentX > maxX * 0.9) {
+      currentX = maxX;
+      handle.style.left = `${maxX + 4}px`;
       slider.classList.add('connected');
-      const now=jstDate();
-      const timeString=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
-      const labelMap=['出発','到着','終了'];
 
-      setTimeout(()=>{
+      const now = jstDate();
+      const timeString = now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0');
+      const labelMap = ['出発', '到着', '終了'];
+
+      setTimeout(() => {
         slider.classList.remove('connected');
-        handle.classList.add('resetting'); handle.style.left='4px';
-        currentX=0; step=(step+1)%steps.length; updateHighlight();
-        setTimeout(()=>handle.classList.remove('resetting'),400);
-      },900);
+        handle.classList.add('resetting');
+        handle.style.left = '4px';
+        currentX = 0;
+        step = (step + 1) % steps.length;
+        updateHighlight();
+        setTimeout(() => handle.classList.remove('resetting'), 400);
+      }, 900);
 
-      try {
-        await waitForUID();
-        let docSnap = await getDoc(timeLogDocRef());
-        let existingData = docSnap.exists()? docSnap.data() : {};
-        await setDoc(timeLogDocRef(), {...existingData,date:todayStr(), [labelMap[step]]:timeString});
-        await updatePanelText();
-      } catch(e){ console.error('Error writing to Firestore:',e); }
+      (async () => {
+        try {
+          const docSnap = await getDoc(timeLogDocRef());
+          let existingData = {};
+          if (docSnap.exists()) existingData = docSnap.data();
 
-    } else { currentX=0; handle.style.left='4px'; slider.classList.remove('connected'); }
+          const updatedData = {
+            ...existingData,
+            date: todayStr(),
+            [labelMap[step]]: timeString
+          };
+          await setDoc(timeLogDocRef(), updatedData);
+          await updatePanelText();
+        } catch (e) {
+          console.error('Error writing to Firestore:', e);
+        }
+      })();
+
+    } else {
+      currentX = 0;
+      handle.style.left = '4px';
+      slider.classList.remove('connected');
+    }
 
     document.removeEventListener('touchmove', onDrag);
     document.removeEventListener('mousemove', onDrag);
@@ -1798,200 +1767,266 @@ window.addEventListener('load', async () => {
     document.removeEventListener('mouseup', endDrag);
   }
 
-  // Visibility change refresh
-  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') initializeState(); });
+  // Initialize UI state on load
+  initializeState();
 
-  // Midnight refresh
-  function scheduleMidnightRefresh(){
-    const now=jstDate();
-    const tomorrow=new Date(now); tomorrow.setHours(24,0,0,0);
-    setTimeout(async()=>{ await initializeState(); scheduleMidnightRefresh(); }, tomorrow-now);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      initializeState();
+    }
+  });
+
+  // Auto refresh at midnight JST every day
+  function scheduleMidnightRefresh() {
+    const now = jstDate();
+    const tomorrow = new Date(now);
+    tomorrow.setHours(24, 0, 0, 0);
+    const msUntilMidnight = tomorrow - now;
+
+    setTimeout(async () => {
+      await initializeState();
+      scheduleMidnightRefresh();
+    }, msUntilMidnight);
   }
   scheduleMidnightRefresh();
 
-  // -------------------- ACTION SHEET --------------------
-  const sheetCloseBtn = document.getElementById('sheetCloseBtn');
-  const actionSheet = document.getElementById('actionSheet');
-  const phoneButton = document.querySelector('.phone-panel .bi-telephone-fill').closest('.app-button');
-  const mailButton = document.querySelector('.phone-panel .bi-envelope-fill').closest('.app-button');
+const sheetCloseBtn = document.getElementById('sheetCloseBtn');
+const phoneButton = document.querySelector('.phone-panel .bi-telephone-fill').closest('.app-button');
+const mailButton = document.querySelector('.phone-panel .bi-envelope-fill').closest('.app-button');
 
-  sheetCloseBtn.addEventListener('click',()=>actionSheet.classList.remove('visible'));
+function closeActionSheet() {
+  actionSheet.classList.remove('visible');
+}
+sheetCloseBtn.addEventListener('click', closeActionSheet);
 
-  phoneButton.addEventListener('click',()=>{
-    document.querySelector('#actionSheet .sheet-content').innerHTML = `
-      <button class="card-wrapper" onclick="handleTap(event,this); callNumber('0000000000')">
-        <i class="bi bi-person-fill icon-left"></i>
-        <div class="card-text">
-          <div class="contact-name">XX支店</div>
-          <div class="contact-phone">000-0000-0000</div>
-          <div class="contact-details">contact 1</div>
-        </div>
-        <i class="bi bi-chevron-right chevron-right"></i>
-      </button>
-      <button class="card-wrapper" onclick="handleTap(event,this); callNumber('0000000000')">
-        <i class="bi bi-buildings-fill icon-left"></i>
-        <div class="card-text">
-          <div class="contact-name">XX本社</div>
-          <div class="contact-phone">000-0000-0000</div>
-          <div class="contact-details">contact 2</div>
-        </div>
-        <i class="bi bi-chevron-right chevron-right"></i>
-      </button>
-      <button class="card-wrapper" onclick="handleTap(event,this); callNumber('0000000000')">
-        <i class="bi bi-exclamation-circle-fill icon-left"></i>
-        <div class="card-text">
-          <div class="contact-name">緊急連絡</div>
-          <div class="contact-phone">000-0000-0000</div>
-          <div class="contact-details">contact 3</div>
-        </div>
-        <i class="bi bi-chevron-right chevron-right"></i>
-      </button>
-      <button class="card-wrapper" onclick="handleTap(event,this); callNumber('0000000000')">
-        <i class="bi bi-box-seam-fill icon-left"></i>
-        <div class="card-text">
-          <div class="contact-name">XXXX管理事務所</div>
-          <div class="contact-phone">000-0000-0000</div>
-          <div class="contact-details">contact 4</div>
-        </div>
-        <i class="bi bi-chevron-right chevron-right"></i>
-      </button>
-    `;
-    actionSheet.classList.add('visible');
-  });
-
-  mailButton.addEventListener('click',()=>{
-    document.querySelector('#actionSheet .sheet-content').innerHTML=`
-      <div class="mail-container">
-        <div class="picker-wrapper">
-          <ul class="picker-list" id="picker">
-            <li class="picker-item empty"></li>
-            <li class="picker-item">X1@XXXXX.com</li>
-            <li class="picker-item">X2@XXXXX.com</li>
-            <li class="picker-item">X3@XXXXX.com</li>
-            <li class="picker-item">X4@XXXXX.com</li>
-            <li class="picker-item empty"></li>
-          </ul>
-          <div class="picker-highlight"></div>
-          <i class="bi bi-envelope-fill picker-mail-icon"></i>
-        </div>
-        <input type="text" placeholder="件名"/>
-        <textarea rows="10" placeholder="本文"></textarea>
-        <div class="verify-toggle-wrapper">
-          <label class="send-toggle">
-            <input type="checkbox" id="sendToggle"/>
-            <span class="slider"></span>
-          </label>
-          <span class="verify-label">送信を許可</span>
-        </div>
-        <button class="send" disabled>
-          <i class="bi bi-check-circle-fill"></i> Send
-        </button>
+phoneButton.addEventListener('click', () => {
+  document.querySelector('#actionSheet .sheet-content').innerHTML = `
+    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+      <i class="bi bi-person-fill icon-left"></i>
+      <div class="card-text">
+        <div class="contact-name">XX支店</div>
+        <div class="contact-phone">000-0000-0000</div>
+        <div class="contact-details">contact 1</div>
       </div>
-    `;
-    const picker = document.getElementById('picker');
-    const items = picker.querySelectorAll('.picker-item');
-    const itemHeight = 40;
-    function updatePicker(){
-      const scrollCenter = picker.scrollTop + picker.clientHeight/2;
-      items.forEach(item=>{
-        const itemCenter = item.offsetTop + itemHeight/2;
-        const distance = Math.abs(scrollCenter-itemCenter);
-        const scale = Math.max(0.85,1-distance/200);
-        const opacity = Math.max(0.3,1-distance/120);
-        item.style.transform=`scale(${scale})`;
-        item.style.opacity=opacity;
-        item.classList.toggle('selected', distance<itemHeight/2);
-      });
-    }
-    picker.scrollTo({top:itemHeight, behavior:'auto'});
-    updatePicker();
-    picker.addEventListener('scroll', updatePicker);
-
-    const sendToggle = document.getElementById('sendToggle');
-    const sendButton = document.querySelector('.mail-container button.send');
-    sendToggle.addEventListener('change',()=>sendButton.disabled=!sendToggle.checked);
-
-    function showMailSentPopup(){
-      const popup = document.getElementById('mailSentPopup');
-      popup.classList.add('visible');
-      setTimeout(()=>popup.classList.remove('visible'),1200);
-    }
-    sendButton.addEventListener('click',()=>{
-      if(sendToggle.checked){
-        actionSheet.classList.remove('visible');
-        document.body.classList.remove('action-sheet-open');
-        showMailSentPopup();
-      }
-    });
-
-    actionSheet.classList.add('visible');
-  });
-
-  // ID card logic
-  const showBtn=document.getElementById('showIdBtn');
-  const xButton=document.getElementById('xButton');
-  const idViewer=document.getElementById('idViewer');
-  const idCard=document.getElementById('idCard');
-  let isAnimating=false;
-
-  showBtn.addEventListener('click',()=>{
-    if(isAnimating) return;
-    isAnimating=true;
-    idViewer.classList.add('visible');
-    setTimeout(()=>idCard.classList.add('visible'),10);
-    setTimeout(()=>{ xButton.classList.add('visible'); isAnimating=false; },300);
-  });
-
-  xButton.addEventListener('click',()=>{
-    if(isAnimating) return;
-    isAnimating=true;
-    xButton.classList.remove('visible');
-    idCard.classList.remove('visible');
-    setTimeout(()=>{ idViewer.classList.remove('visible'); isAnimating=false; },300);
-  });
-
-  function handleTap(e,el){ el.classList.add('pressed'); setTimeout(()=>el.classList.remove('pressed'),250); }
-  function callNumber(number){ window.location.href='tel:'+number; }
-  window.handleTap=handleTap; window.callNumber=callNumber;
-
-  await initializeState();
+      <i class="bi bi-chevron-right chevron-right"></i>
+    </button>
+    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+      <i class="bi bi-buildings-fill icon-left"></i>
+      <div class="card-text">
+        <div class="contact-name">XX本社</div>
+        <div class="contact-phone">000-0000-0000</div>
+        <div class="contact-details">contact 2</div>
+      </div>
+      <i class="bi bi-chevron-right chevron-right"></i>
+    </button>
+    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+      <i class="bi bi-exclamation-circle-fill icon-left"></i>
+      <div class="card-text">
+        <div class="contact-name">緊急連絡</div>
+        <div class="contact-phone">000-0000-0000</div>
+        <div class="contact-details">contact 3</div>
+      </div>
+      <i class="bi bi-chevron-right chevron-right"></i>
+    </button>
+    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+      <i class="bi bi-box-seam-fill icon-left"></i>
+      <div class="card-text">
+        <div class="contact-name">XXXX管理事務所</div>
+        <div class="contact-phone">000-0000-0000</div>
+        <div class="contact-details">contact 4</div>
+      </div>
+      <i class="bi bi-chevron-right chevron-right"></i>
+    </button>
+  `;
+  actionSheet.classList.add('visible');
 });
 
-// -------------------- SIDE PANEL --------------------
-const panel=document.getElementById('panel');
-const sideTab=document.getElementById('sideTab');
-const cancelBtn=document.getElementById('cancelBtn');
-const logoutBtn=document.getElementById('logoutBtn');
+mailButton.addEventListener('click', () => {
+  document.querySelector('#actionSheet .sheet-content').innerHTML = `
+    <div class="mail-container">
+      <div class="picker-wrapper">
+        <ul class="picker-list" id="picker">
+          <li class="picker-item empty"></li>
+          <li class="picker-item">X1@XXXXX.com</li>
+          <li class="picker-item">X2@XXXXX.com</li>
+          <li class="picker-item">X3@XXXXX.com</li>
+          <li class="picker-item">X4@XXXXX.com</li>
+          <li class="picker-item empty"></li>
+        </ul>
+        <div class="picker-highlight"></div>
+        <i class="bi bi-envelope-fill picker-mail-icon"></i>
+      </div>
+      <input type="text" placeholder="件名" />
+      <textarea rows="10" placeholder="本文"></textarea>
+      <div class="verify-toggle-wrapper">
+        <label class="send-toggle">
+          <input type="checkbox" id="sendToggle" />
+          <span class="slider"></span>
+        </label>
+        <span class="verify-label">送信を許可</span>
+      </div>
+      <button class="send" disabled>
+        <i class="bi bi-check-circle-fill"></i> Send
+      </button>
+    </div>
+  `;
 
-function updatePanelPosition(){
-  const tabRect=sideTab.getBoundingClientRect();
-  let top=tabRect.top+tabRect.height/2-panel.offsetHeight/2-80;
-  top=Math.min(Math.max(top,20),window.innerHeight-panel.offsetHeight-20);
-  panel.style.top=`${top}px`;
+  const picker = document.getElementById('picker');
+  const items = picker.querySelectorAll('.picker-item');
+  const itemHeight = 40;
+
+  function updatePicker() {
+    const scrollCenter = picker.scrollTop + picker.clientHeight / 2;
+    items.forEach((item) => {
+      const itemCenter = item.offsetTop + itemHeight / 2;
+      const distance = Math.abs(scrollCenter - itemCenter);
+      const scale = Math.max(0.85, 1 - distance / 200);
+      const opacity = Math.max(0.3, 1 - distance / 120);
+      item.style.transform = `scale(${scale})`;
+      item.style.opacity = opacity;
+      if (distance < itemHeight / 2) {
+        item.classList.add('selected');
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  }
+
+  picker.scrollTo({ top: itemHeight, behavior: 'auto' });
+  updatePicker();
+
+  picker.addEventListener('scroll', updatePicker);
+
+  const sendToggle = document.getElementById('sendToggle');
+  const sendButton = document.querySelector('.mail-container button.send');
+
+  sendToggle.addEventListener('change', () => {
+    sendButton.disabled = !sendToggle.checked;
+  });
+
+  // --- Mail sent popup function ---
+function showMailSentPopup() {
+  const popup = document.getElementById('mailSentPopup');
+  popup.classList.add('visible');
+
+  setTimeout(() => {
+    popup.classList.remove('visible');
+  }, 1200); // popup visible for 1.2 seconds
+}
+
+// --- Updated send button listener ---
+sendButton.addEventListener('click', () => {
+  if (sendToggle.checked) {
+    // Close action sheet first
+    actionSheet.classList.remove('visible');
+    document.body.classList.remove('action-sheet-open');
+
+    // Then trigger mail sent popup
+    showMailSentPopup();
+  }
+});
+
+  actionSheet.classList.add('visible');
+});
+
+function callNumber(phoneNumber) {
+  window.location.href = 'tel:' + phoneNumber;
+}
+
+function handleTap(event, element) {
+  element.classList.add('pressed');
+  setTimeout(() => {
+    element.classList.remove('pressed');
+  }, 250);
+}
+
+// ID card logic unchanged
+const showBtn = document.getElementById('showIdBtn');
+const xButton = document.getElementById('xButton');
+const idViewer = document.getElementById('idViewer');
+const idCard = document.getElementById('idCard');
+
+let isAnimating = false;
+
+showBtn.addEventListener('click', () => {
+  if (isAnimating) return;
+  isAnimating = true;
+  idViewer.classList.add('visible');
+  setTimeout(() => {
+    idCard.classList.add('visible');
+  }, 10);
+  setTimeout(() => {
+    xButton.classList.add('visible');
+    isAnimating = false;
+  }, 300);
+});
+
+xButton.addEventListener('click', () => {
+  if (isAnimating) return;
+  isAnimating = true;
+  xButton.classList.remove('visible');
+  idCard.classList.remove('visible');
+  setTimeout(() => {
+    idViewer.classList.remove('visible');
+    isAnimating = false;
+  }, 300);
+});
+
+// *** THE CRUCIAL FIX TO MAKE handleTap & callNumber ACCESSIBLE TO INLINE ONCLICK ***
+
+window.handleTap = handleTap;
+window.callNumber = callNumber;
+
+}); // end load event listener
+
+// Side Tab Panel JS
+const panel = document.getElementById('panel');
+const sideTab = document.getElementById('sideTab');
+const cancelBtn = document.getElementById('cancelBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+
+function updatePanelPosition() {
+  const tabRect = sideTab.getBoundingClientRect();
+  let top = tabRect.top + tabRect.height / 2 - panel.offsetHeight / 2 - 80;
+  const maxTop = window.innerHeight - panel.offsetHeight - 20;
+  const minTop = 20;
+  if (top > maxTop) top = maxTop;
+  if (top < minTop) top = minTop;
+  panel.style.top = `${top}px`;
 }
 
 updatePanelPosition();
-window.addEventListener('resize',updatePanelPosition);
+window.addEventListener('resize', updatePanelPosition);
 
-sideTab.addEventListener('click',()=>{
-  sideTab.style.opacity='0';
+// Show panel on tab click
+sideTab.addEventListener('click', () => {
+  sideTab.style.opacity = '0';
   sideTab.classList.add('hidden');
   panel.classList.add('show');
 });
 
-cancelBtn.addEventListener('click',()=>{
+// Cancel button closes panel
+cancelBtn.addEventListener('click', () => {
   panel.classList.remove('show');
-  panel.addEventListener('transitionend',function handler(e){
-    if(e.propertyName==='transform'){
+  panel.addEventListener('transitionend', function handler(e) {
+    if (e.propertyName === 'transform') {
       sideTab.classList.remove('hidden');
-      sideTab.style.opacity='1';
-      panel.removeEventListener('transitionend',handler);
+      sideTab.style.opacity = '1';
+      panel.removeEventListener('transitionend', handler);
     }
   });
 });
 
-logoutBtn.addEventListener('click',()=>logoutAll());
+// Logout placeholder
+logoutBtn.addEventListener('click', () => {
+  signOut(auth).then(() => {
+    window.location.href = 'login.html';
+  }).catch((error) => {
+    console.error('Logout failed:', error);
+  });
+});
+
 </script>
-    
+
 </body>
 </html>
