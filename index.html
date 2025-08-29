@@ -1519,13 +1519,20 @@ background: #dbdede;
 </div>
 
 <script type="module">
-
 // Firebase imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut,
+  getIdToken,
+  getRedirectResult,
+  setPersistence,
+  browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
-// Firebase config
+// Firebase config (your existing config)
 const firebaseConfig = {
   apiKey: "AIzaSyD4PUPUa2Ggl8_wKNBNhTFpGVsx_nJLfjY",
   authDomain: "n-intelligence.firebaseapp.com",
@@ -1540,18 +1547,150 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// --- FIXED: Redirect to login only if NOT on login.html ---
-let currentUserUID = null;
-onAuthStateChanged(auth, user => {
-  const currentPage = window.location.pathname.split('/').pop();
-  if (!user && currentPage !== 'login.html') {
-    window.location.href = 'login.html';
-  } else if (user) {
-    currentUserUID = user.uid; // store UID for per-user Firestore
-  }
+// Try to set local persistence (helps desktop, but not relied upon for PWA)
+setPersistence(auth, browserLocalPersistence).catch(e => {
+  console.warn('setPersistence failed', e);
 });
 
-// --- Helper functions ---
+// ---------- AUTH -> SERVER-SESSION BOOTSTRAP ----------
+
+// Server endpoints (Cloud Function / server that mints cookies)
+const SESSION_LOGIN_ENDPOINT = '/sessionLogin';    // POST { idToken } -> sets cookie
+const SESSION_LOGOUT_ENDPOINT = '/sessionLogout';  // POST -> clears cookie
+const API_ME_ENDPOINT = '/api/me';                 // GET -> checks cookie (credentials include)
+
+// currentUserUID is used by the rest of your app for Firestore paths
+let currentUserUID = null;
+
+// Helper: call server to check session cookie
+async function checkServerSession() {
+  try {
+    const r = await fetch(API_ME_ENDPOINT, { credentials: 'include' });
+    if (!r.ok) return null;
+    return await r.json(); // { ok: true, uid: '...' }
+  } catch (e) {
+    console.warn('checkServerSession failed', e);
+    return null;
+  }
+}
+
+// Called at app bootstrap to ensure we have a session or set one quickly after client login
+async function bootstrapAuth() {
+  // 1) Check server session cookie first (authoritative)
+  const server = await checkServerSession();
+  if (server && server.ok) {
+    currentUserUID = server.uid;
+    // Sync client auth state in background (non-blocking)
+    // but don't rely on it for gating UI.
+    return;
+  }
+
+  // 2) Check client SDK auth state (fast path)
+  let clientUser = null;
+  await new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, user => {
+      clientUser = user;
+      unsub();
+      resolve();
+    });
+    // If auth SDK doesn't respond within 1.5s, continue (avoid hang)
+    setTimeout(resolve, 1500);
+  });
+
+  if (clientUser) {
+    // Exchange idToken to server to mint session cookie
+    try {
+      const idToken = await getIdToken(clientUser, /* forceRefresh */ true);
+      const resp = await fetch(SESSION_LOGIN_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ idToken })
+      });
+      if (resp.ok) {
+        const json = await resp.json();
+        currentUserUID = json.uid;
+        return;
+      } else {
+        console.warn('sessionLogin failed', await resp.text());
+      }
+    } catch (e) {
+      console.error('Error creating server session', e);
+    }
+  }
+
+  // 3) No server session and client not signed-in: show login or redirect once.
+  // Prevent infinite redirect loops: only one auto-redirect per load.
+  const currentPage = window.location.pathname.split('/').pop();
+  if (currentPage !== 'login.html') {
+    if (!sessionStorage.getItem('auth_in_progress')) {
+      sessionStorage.setItem('auth_in_progress', '1');
+      window.location.href = 'login.html';
+    } else {
+      // we've already tried — do nothing, let user manually sign in
+      // (this avoids redirect loops if something blocks login)
+    }
+  }
+}
+
+// Called on login page after Firebase redirect sign-in completes
+async function handleRedirectResultAndCreateSession() {
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result || !result.user) return; // not on redirect result or not signed in
+    const user = result.user;
+    try {
+      const idToken = await getIdToken(user, /* forceRefresh */ true);
+      const resp = await fetch(SESSION_LOGIN_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ idToken })
+      });
+      if (resp.ok) {
+        // server cookie set — safe to redirect to app root or /app
+        window.location.href = '/';
+      } else {
+        console.error('sessionLogin server error', await resp.text());
+      }
+    } catch (e) {
+      console.error('Error exchanging idToken for session cookie', e);
+    }
+  } catch (err) {
+    // Not an error to show to user — likely not on login redirect page
+    // but log for debugging
+    console.debug('getRedirectResult:', err);
+  }
+}
+
+// Logout helper: clear server cookie then client SDK
+async function logoutAll() {
+  try {
+    await fetch(SESSION_LOGOUT_ENDPOINT, {
+      method: 'POST',
+      credentials: 'include'
+    });
+  } catch (e) {
+    console.warn('sessionLogout request failed', e);
+  }
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.warn('client signOut failed', e);
+  }
+  // then go to login
+  window.location.href = 'login.html';
+}
+
+// If we're on login.html, try to finish redirect login and create session cookie
+if (window.location.pathname.split('/').pop() === 'login.html') {
+  // Run redirect result handler (will redirect to / if successful)
+  handleRedirectResultAndCreateSession();
+}
+
+// ---------- END AUTH BOOTSTRAP ----------
+
+// ---------- Your existing app code (with small tweaks) ----------
 const jstDate = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
 
 const todayStr = () => {
@@ -1568,7 +1707,10 @@ const timeLogDocRef = () => {
   return doc(db, "Users", currentUserUID, "TimeLog", todayStr());
 };
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  // Ensure auth bootstrap runs before any Firestore reads/writes
+  await bootstrapAuth();
+
   // Cache elements
   const slider = document.getElementById('slider');
   const handle = document.getElementById('handle');
@@ -1599,7 +1741,8 @@ window.addEventListener('load', () => {
 
   // Initialize state from Firestore (per-user)
   async function initializeState() {
-    if (!currentUserUID) return; // wait until user UID is ready
+    // Wait until currentUserUID available (bootstrapAuth sets it if server session or client user exists)
+    if (!currentUserUID) return;
 
     let docSnap;
     try {
@@ -1685,6 +1828,7 @@ window.addEventListener('load', () => {
     });
   });
 
+  // Drag handlers unchanged
   handle.addEventListener('touchstart', startDrag, { passive: false });
   handle.addEventListener('mousedown', startDrag);
 
@@ -1767,7 +1911,7 @@ window.addEventListener('load', () => {
     document.removeEventListener('mouseup', endDrag);
   }
 
-  // Initialize UI state on load
+  // Initialize UI state on load (after auth bootstrap)
   initializeState();
 
   document.addEventListener('visibilitychange', () => {
@@ -1790,196 +1934,197 @@ window.addEventListener('load', () => {
   }
   scheduleMidnightRefresh();
 
-const sheetCloseBtn = document.getElementById('sheetCloseBtn');
-const phoneButton = document.querySelector('.phone-panel .bi-telephone-fill').closest('.app-button');
-const mailButton = document.querySelector('.phone-panel .bi-envelope-fill').closest('.app-button');
+  // Action sheet & other UI — unchanged except where needed
+  const sheetCloseBtn = document.getElementById('sheetCloseBtn');
+  const phoneButton = document.querySelector('.phone-panel .bi-telephone-fill').closest('.app-button');
+  const mailButton = document.querySelector('.phone-panel .bi-envelope-fill').closest('.app-button');
+  const actionSheet = document.getElementById('actionSheet');
 
-function closeActionSheet() {
-  actionSheet.classList.remove('visible');
-}
-sheetCloseBtn.addEventListener('click', closeActionSheet);
-
-phoneButton.addEventListener('click', () => {
-  document.querySelector('#actionSheet .sheet-content').innerHTML = `
-    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
-      <i class="bi bi-person-fill icon-left"></i>
-      <div class="card-text">
-        <div class="contact-name">XX支店</div>
-        <div class="contact-phone">000-0000-0000</div>
-        <div class="contact-details">contact 1</div>
-      </div>
-      <i class="bi bi-chevron-right chevron-right"></i>
-    </button>
-    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
-      <i class="bi bi-buildings-fill icon-left"></i>
-      <div class="card-text">
-        <div class="contact-name">XX本社</div>
-        <div class="contact-phone">000-0000-0000</div>
-        <div class="contact-details">contact 2</div>
-      </div>
-      <i class="bi bi-chevron-right chevron-right"></i>
-    </button>
-    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
-      <i class="bi bi-exclamation-circle-fill icon-left"></i>
-      <div class="card-text">
-        <div class="contact-name">緊急連絡</div>
-        <div class="contact-phone">000-0000-0000</div>
-        <div class="contact-details">contact 3</div>
-      </div>
-      <i class="bi bi-chevron-right chevron-right"></i>
-    </button>
-    <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
-      <i class="bi bi-box-seam-fill icon-left"></i>
-      <div class="card-text">
-        <div class="contact-name">XXXX管理事務所</div>
-        <div class="contact-phone">000-0000-0000</div>
-        <div class="contact-details">contact 4</div>
-      </div>
-      <i class="bi bi-chevron-right chevron-right"></i>
-    </button>
-  `;
-  actionSheet.classList.add('visible');
-});
-
-mailButton.addEventListener('click', () => {
-  document.querySelector('#actionSheet .sheet-content').innerHTML = `
-    <div class="mail-container">
-      <div class="picker-wrapper">
-        <ul class="picker-list" id="picker">
-          <li class="picker-item empty"></li>
-          <li class="picker-item">X1@XXXXX.com</li>
-          <li class="picker-item">X2@XXXXX.com</li>
-          <li class="picker-item">X3@XXXXX.com</li>
-          <li class="picker-item">X4@XXXXX.com</li>
-          <li class="picker-item empty"></li>
-        </ul>
-        <div class="picker-highlight"></div>
-        <i class="bi bi-envelope-fill picker-mail-icon"></i>
-      </div>
-      <input type="text" placeholder="件名" />
-      <textarea rows="10" placeholder="本文"></textarea>
-      <div class="verify-toggle-wrapper">
-        <label class="send-toggle">
-          <input type="checkbox" id="sendToggle" />
-          <span class="slider"></span>
-        </label>
-        <span class="verify-label">送信を許可</span>
-      </div>
-      <button class="send" disabled>
-        <i class="bi bi-check-circle-fill"></i> Send
-      </button>
-    </div>
-  `;
-
-  const picker = document.getElementById('picker');
-  const items = picker.querySelectorAll('.picker-item');
-  const itemHeight = 40;
-
-  function updatePicker() {
-    const scrollCenter = picker.scrollTop + picker.clientHeight / 2;
-    items.forEach((item) => {
-      const itemCenter = item.offsetTop + itemHeight / 2;
-      const distance = Math.abs(scrollCenter - itemCenter);
-      const scale = Math.max(0.85, 1 - distance / 200);
-      const opacity = Math.max(0.3, 1 - distance / 120);
-      item.style.transform = `scale(${scale})`;
-      item.style.opacity = opacity;
-      if (distance < itemHeight / 2) {
-        item.classList.add('selected');
-      } else {
-        item.classList.remove('selected');
-      }
-    });
+  function closeActionSheet() {
+    actionSheet.classList.remove('visible');
   }
+  sheetCloseBtn.addEventListener('click', closeActionSheet);
 
-  picker.scrollTo({ top: itemHeight, behavior: 'auto' });
-  updatePicker();
-
-  picker.addEventListener('scroll', updatePicker);
-
-  const sendToggle = document.getElementById('sendToggle');
-  const sendButton = document.querySelector('.mail-container button.send');
-
-  sendToggle.addEventListener('change', () => {
-    sendButton.disabled = !sendToggle.checked;
+  phoneButton.addEventListener('click', () => {
+    document.querySelector('#actionSheet .sheet-content').innerHTML = `
+      <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+        <i class="bi bi-person-fill icon-left"></i>
+        <div class="card-text">
+          <div class="contact-name">XX支店</div>
+          <div class="contact-phone">000-0000-0000</div>
+          <div class="contact-details">contact 1</div>
+        </div>
+        <i class="bi bi-chevron-right chevron-right"></i>
+      </button>
+      <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+        <i class="bi bi-buildings-fill icon-left"></i>
+        <div class="card-text">
+          <div class="contact-name">XX本社</div>
+          <div class="contact-phone">000-0000-0000</div>
+          <div class="contact-details">contact 2</div>
+        </div>
+        <i class="bi bi-chevron-right chevron-right"></i>
+      </button>
+      <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+        <i class="bi bi-exclamation-circle-fill icon-left"></i>
+        <div class="card-text">
+          <div class="contact-name">緊急連絡</div>
+          <div class="contact-phone">000-0000-0000</div>
+          <div class="contact-details">contact 3</div>
+        </div>
+        <i class="bi bi-chevron-right chevron-right"></i>
+      </button>
+      <button class="card-wrapper" onclick="handleTap(event, this); callNumber('0000000000')">
+        <i class="bi bi-box-seam-fill icon-left"></i>
+        <div class="card-text">
+          <div class="contact-name">XXXX管理事務所</div>
+          <div class="contact-phone">000-0000-0000</div>
+          <div class="contact-details">contact 4</div>
+        </div>
+        <i class="bi bi-chevron-right chevron-right"></i>
+      </button>
+    `;
+    actionSheet.classList.add('visible');
   });
 
-  // --- Mail sent popup function ---
-function showMailSentPopup() {
-  const popup = document.getElementById('mailSentPopup');
-  popup.classList.add('visible');
+  mailButton.addEventListener('click', () => {
+    document.querySelector('#actionSheet .sheet-content').innerHTML = `
+      <div class="mail-container">
+        <div class="picker-wrapper">
+          <ul class="picker-list" id="picker">
+            <li class="picker-item empty"></li>
+            <li class="picker-item">X1@XXXXX.com</li>
+            <li class="picker-item">X2@XXXXX.com</li>
+            <li class="picker-item">X3@XXXXX.com</li>
+            <li class="picker-item">X4@XXXXX.com</li>
+            <li class="picker-item empty"></li>
+          </ul>
+          <div class="picker-highlight"></div>
+          <i class="bi bi-envelope-fill picker-mail-icon"></i>
+        </div>
+        <input type="text" placeholder="件名" />
+        <textarea rows="10" placeholder="本文"></textarea>
+        <div class="verify-toggle-wrapper">
+          <label class="send-toggle">
+            <input type="checkbox" id="sendToggle" />
+            <span class="slider"></span>
+          </label>
+          <span class="verify-label">送信を許可</span>
+        </div>
+        <button class="send" disabled>
+          <i class="bi bi-check-circle-fill"></i> Send
+        </button>
+      </div>
+    `;
 
-  setTimeout(() => {
-    popup.classList.remove('visible');
-  }, 1200); // popup visible for 1.2 seconds
-}
+    const picker = document.getElementById('picker');
+    const items = picker.querySelectorAll('.picker-item');
+    const itemHeight = 40;
 
-// --- Updated send button listener ---
-sendButton.addEventListener('click', () => {
-  if (sendToggle.checked) {
-    // Close action sheet first
-    actionSheet.classList.remove('visible');
-    document.body.classList.remove('action-sheet-open');
+    function updatePicker() {
+      const scrollCenter = picker.scrollTop + picker.clientHeight / 2;
+      items.forEach((item) => {
+        const itemCenter = item.offsetTop + itemHeight / 2;
+        const distance = Math.abs(scrollCenter - itemCenter);
+        const scale = Math.max(0.85, 1 - distance / 200);
+        const opacity = Math.max(0.3, 1 - distance / 120);
+        item.style.transform = `scale(${scale})`;
+        item.style.opacity = opacity;
+        if (distance < itemHeight / 2) {
+          item.classList.add('selected');
+        } else {
+          item.classList.remove('selected');
+        }
+      });
+    }
 
-    // Then trigger mail sent popup
-    showMailSentPopup();
+    picker.scrollTo({ top: itemHeight, behavior: 'auto' });
+    updatePicker();
+
+    picker.addEventListener('scroll', updatePicker);
+
+    const sendToggle = document.getElementById('sendToggle');
+    const sendButton = document.querySelector('.mail-container button.send');
+
+    sendToggle.addEventListener('change', () => {
+      sendButton.disabled = !sendToggle.checked;
+    });
+
+    // --- Mail sent popup function ---
+    function showMailSentPopup() {
+      const popup = document.getElementById('mailSentPopup');
+      popup.classList.add('visible');
+
+      setTimeout(() => {
+        popup.classList.remove('visible');
+      }, 1200); // popup visible for 1.2 seconds
+    }
+
+    // --- Updated send button listener ---
+    sendButton.addEventListener('click', () => {
+      if (sendToggle.checked) {
+        // Close action sheet first
+        actionSheet.classList.remove('visible');
+        document.body.classList.remove('action-sheet-open');
+
+        // Then trigger mail sent popup
+        showMailSentPopup();
+      }
+    });
+
+    actionSheet.classList.add('visible');
+  });
+
+  function callNumber(phoneNumber) {
+    window.location.href = 'tel:' + phoneNumber;
   }
-});
 
-  actionSheet.classList.add('visible');
-});
+  function handleTap(event, element) {
+    element.classList.add('pressed');
+    setTimeout(() => {
+      element.classList.remove('pressed');
+    }, 250);
+  }
 
-function callNumber(phoneNumber) {
-  window.location.href = 'tel:' + phoneNumber;
-}
+  // ID card logic unchanged
+  const showBtn = document.getElementById('showIdBtn');
+  const xButton = document.getElementById('xButton');
+  const idViewer = document.getElementById('idViewer');
+  const idCard = document.getElementById('idCard');
 
-function handleTap(event, element) {
-  element.classList.add('pressed');
-  setTimeout(() => {
-    element.classList.remove('pressed');
-  }, 250);
-}
+  let isAnimating = false;
 
-// ID card logic unchanged
-const showBtn = document.getElementById('showIdBtn');
-const xButton = document.getElementById('xButton');
-const idViewer = document.getElementById('idViewer');
-const idCard = document.getElementById('idCard');
+  showBtn.addEventListener('click', () => {
+    if (isAnimating) return;
+    isAnimating = true;
+    idViewer.classList.add('visible');
+    setTimeout(() => {
+      idCard.classList.add('visible');
+    }, 10);
+    setTimeout(() => {
+      xButton.classList.add('visible');
+      isAnimating = false;
+    }, 300);
+  });
 
-let isAnimating = false;
+  xButton.addEventListener('click', () => {
+    if (isAnimating) return;
+    isAnimating = true;
+    xButton.classList.remove('visible');
+    idCard.classList.remove('visible');
+    setTimeout(() => {
+      idViewer.classList.remove('visible');
+      isAnimating = false;
+    }, 300);
+  });
 
-showBtn.addEventListener('click', () => {
-  if (isAnimating) return;
-  isAnimating = true;
-  idViewer.classList.add('visible');
-  setTimeout(() => {
-    idCard.classList.add('visible');
-  }, 10);
-  setTimeout(() => {
-    xButton.classList.add('visible');
-    isAnimating = false;
-  }, 300);
-});
-
-xButton.addEventListener('click', () => {
-  if (isAnimating) return;
-  isAnimating = true;
-  xButton.classList.remove('visible');
-  idCard.classList.remove('visible');
-  setTimeout(() => {
-    idViewer.classList.remove('visible');
-    isAnimating = false;
-  }, 300);
-});
-
-// *** THE CRUCIAL FIX TO MAKE handleTap & callNumber ACCESSIBLE TO INLINE ONCLICK ***
-
-window.handleTap = handleTap;
-window.callNumber = callNumber;
+  // Make functions global for inline onclick handlers
+  window.handleTap = handleTap;
+  window.callNumber = callNumber;
 
 }); // end load event listener
 
-// Side Tab Panel JS
+// Side Tab Panel JS (unchanged except logout wiring)
 const panel = document.getElementById('panel');
 const sideTab = document.getElementById('sideTab');
 const cancelBtn = document.getElementById('cancelBtn');
@@ -2017,15 +2162,10 @@ cancelBtn.addEventListener('click', () => {
   });
 });
 
-// Logout placeholder
+// Logout now uses the server cookie flow
 logoutBtn.addEventListener('click', () => {
-  signOut(auth).then(() => {
-    window.location.href = 'login.html';
-  }).catch((error) => {
-    console.error('Logout failed:', error);
-  });
+  logoutAll();
 });
-
 </script>
 
 </body>
