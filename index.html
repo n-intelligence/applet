@@ -1544,20 +1544,22 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// --- Handle redirect login result first ---
-getRedirectResult(auth)
-  .then((result) => {
-    if (result?.user) {
-      currentUserUID = result.user.uid;
-      updatePanelButtons(result.user); // user just logged in
-    }
-  })
-  .catch((err) => console.error('Redirect login failed:', err));
+window.addEventListener('load', () => {
+  // --- Handle redirect login result after page load ---
+  getRedirectResult(auth)
+    .then((result) => {
+      if (result?.user) {
+        currentUserUID = result.user.uid;
+        updatePanelButtons(result.user); // user just logged in
+      }
+    })
+    .catch((err) => console.error('Redirect login failed:', err));
 
-// --- Continuous auth state observer ---
-onAuthStateChanged(auth, (user) => {
-  currentUserUID = user ? user.uid : null;
-  updatePanelButtons(user);
+  // --- Continuous auth state observer ---
+  onAuthStateChanged(auth, (user) => {
+    currentUserUID = user ? user.uid : null;
+    updatePanelButtons(user);
+  });
 });
 
 // --- Helper functions ---
@@ -2023,10 +2025,9 @@ function updatePanelButtons(user) {
   } else {
   // User is logged out
   logoutBtn.textContent = 'ログイン';
-  logoutBtn.onclick = () => {
-    const provider = new GoogleAuthProvider();
-    signInWithRedirect(auth, provider);
-  };
+logoutBtn.onclick = () => {
+  signInWithRedirect(auth, provider); // use the provider declared at the top
+　};
 }
 }
 
