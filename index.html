@@ -1536,20 +1536,25 @@ const firebaseConfig = {
   appId: "1:67594213950:web:8a2985240b55d82adfcf6f"
 };
 
-// --- FIXED: No Redirect to login ---
-let currentUserUID = null;  // declare first
+// --- Firebase Auth Setup ---
+let currentUserUID = null; // declare first
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-// Check if user just returned from redirect login
+// Function to update buttons based on user
+function handleUserState(user) {
+  currentUserUID = user ? user.uid : null;
+  updatePanelButtons(user);
+}
+
+// --- Check if returning from redirect login ---
 getRedirectResult(auth)
   .then((result) => {
-    if (result && result.user) {
-      currentUserUID = result.user.uid;
-      updatePanelButtons(result.user);
+    if (result?.user) {
+      handleUserState(result.user);
     }
   })
   .catch((error) => {
@@ -1557,10 +1562,9 @@ getRedirectResult(auth)
     alert('ログインに失敗しました');
   });
 
-// Observe auth state changes
+// Observe auth state continuously
 onAuthStateChanged(auth, (user) => {
-  currentUserUID = user ? user.uid : null;
-  updatePanelButtons(user);
+  handleUserState(user);
 });
 
 // --- Helper functions ---
