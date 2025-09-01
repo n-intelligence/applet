@@ -2012,16 +2012,16 @@ function updatePanelButtons(user) {
   // User is logged out
   logoutBtn.textContent = 'ログイン';
   logoutBtn.onclick = async () => {
-    try {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      const result = await auth.signInWithPopup(provider);
-      currentUserUID = result.user.uid;
-      updatePanelButtons(result.user);
-    } catch (error) {
-      console.error('Google login failed:', error);
-      alert('ログインに失敗しました');
-    }
-  };
+  try {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    currentUserUID = result.user.uid;
+    updatePanelButtons(result.user);
+  } catch (error) {
+    console.error('Google login failed:', error);
+    alert('ログインに失敗しました');
+  }
+};
 }
 }
 
