@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>intelligence</title>
+  <title>Nandemo</title>
 
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -1544,26 +1544,31 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Function to update buttons based on user
-function handleUserState(user) {
+// Dynamically update panel buttons based on login state
+function updatePanelButtons(user) {
   currentUserUID = user ? user.uid : null;
-  updatePanelButtons(user);
+  if (user) {
+    logoutBtn.textContent = 'ログアウト';
+    logoutBtn.onclick = () => signOut(auth);
+  } else {
+    logoutBtn.textContent = 'ログイン';
+    logoutBtn.onclick = () => signInWithRedirect(auth, provider);
+  }
 }
 
 // --- FIRST: handle redirect login result ---
 getRedirectResult(auth)
   .then((result) => {
     if (result?.user) {
-      handleUserState(result.user); // user just logged in
+      updatePanelButtons(result.user); // user just logged in
     }
   })
-  .catch((error) => {
-    console.error('Google redirect login failed:', error);
-    alert('ログインに失敗しました');
-  })
+  .catch((err) => console.error('Redirect login failed:', err))
   .finally(() => {
     // --- THEN: observe auth state continuously ---
-    onAuthStateChanged(auth, handleUserState);
+    onAuthStateChanged(auth, (user) => {
+      updatePanelButtons(user);
+    });
   });
 
 // --- Helper functions ---
