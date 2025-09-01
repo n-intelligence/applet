@@ -1544,12 +1544,29 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Handle redirect login (once on load)
+// --- Firebase Auth Handling for Safari/iOS PWAs ---
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUserUID = user.uid;
+    updatePanelButtons(user);
+
+    // Only initialize user-specific UI once login is confirmed
+    try {
+      await initializeState();
+    } catch(e) {
+      console.error('Failed to initialize state after login:', e);
+    }
+  } else {
+    currentUserUID = null;
+    updatePanelButtons(null);
+  }
+});
+
+// Optional: log redirect results for debugging only
 getRedirectResult(auth)
   .then(result => {
     if (result?.user) {
-      currentUserUID = result.user.uid;
-      updatePanelButtons(result.user);
+      console.log('Redirect login successful:', result.user);
     }
   })
   .catch(err => console.error('Redirect login failed:', err));
