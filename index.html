@@ -1544,18 +1544,6 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Dynamically update panel buttons based on login state
-function updatePanelButtons(user) {
-  currentUserUID = user ? user.uid : null;
-  if (user) {
-    logoutBtn.textContent = 'ログアウト';
-    logoutBtn.onclick = () => signOut(auth);
-  } else {
-    logoutBtn.textContent = 'ログイン';
-    logoutBtn.onclick = () => signInWithRedirect(auth, provider);
-  }
-}
-
 // --- FIRST: handle redirect login result ---
 getRedirectResult(auth)
   .then((result) => {
