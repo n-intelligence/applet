@@ -1550,22 +1550,21 @@ function handleUserState(user) {
   updatePanelButtons(user);
 }
 
-// --- Check if returning from redirect login ---
+// --- FIRST: handle redirect login result ---
 getRedirectResult(auth)
   .then((result) => {
     if (result?.user) {
-      handleUserState(result.user);
+      handleUserState(result.user); // user just logged in
     }
   })
   .catch((error) => {
     console.error('Google redirect login failed:', error);
     alert('ログインに失敗しました');
+  })
+  .finally(() => {
+    // --- THEN: observe auth state continuously ---
+    onAuthStateChanged(auth, handleUserState);
   });
-
-// Observe auth state continuously
-onAuthStateChanged(auth, (user) => {
-  handleUserState(user);
-});
 
 // --- Helper functions ---
 const jstDate = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
