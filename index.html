@@ -1311,6 +1311,7 @@
   background: rgba(173,201,233,0.25);
   color: #F7F6F3;
   border: none;
+  white-space: nowrap;
 }
 
 .logout-btn {
@@ -1540,15 +1541,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// --- FIXED: Redirect to login only if NOT on login.html ---
+// --- FIXED: No Redirect to login ---
 let currentUserUID = null;
 onAuthStateChanged(auth, user => {
-  const currentPage = window.location.pathname.split('/').pop();
-  if (!user && currentPage !== 'login.html') {
-    window.location.href = 'login.html';
-  } else if (user) {
-    currentUserUID = user.uid; // store UID for per-user Firestore
-  }
+  currentUserUID = user ? user.uid : null;
+  updatePanelButtons(user);
 });
 
 // --- Helper functions ---
@@ -1979,7 +1976,7 @@ window.callNumber = callNumber;
 
 }); // end load event listener
 
-// Side Tab Panel JS
+// Side Tab Panel JS (updated for login panel)
 const panel = document.getElementById('panel');
 const sideTab = document.getElementById('sideTab');
 const cancelBtn = document.getElementById('cancelBtn');
@@ -1998,33 +1995,64 @@ function updatePanelPosition() {
 updatePanelPosition();
 window.addEventListener('resize', updatePanelPosition);
 
-// Show panel on tab click
-sideTab.addEventListener('click', () => {
-  sideTab.style.opacity = '0';
-  sideTab.classList.add('hidden');
-  panel.classList.add('show');
-});
-
-// Cancel button closes panel
-cancelBtn.addEventListener('click', () => {
-  panel.classList.remove('show');
-  panel.addEventListener('transitionend', function handler(e) {
-    if (e.propertyName === 'transform') {
-      sideTab.classList.remove('hidden');
-      sideTab.style.opacity = '1';
-      panel.removeEventListener('transitionend', handler);
+// Dynamically update panel buttons based on login state
+function updatePanelButtons(user) {
+  if (user) {
+    // User is logged in
+    logoutBtn.textContent = 'ログアウト';
+    logoutBtn.onclick = () => {
+      signOut(auth).then(() => {
+        currentUserUID = null;
+        updatePanelButtons(null);
+      }).catch((error) => {
+        console.error('Logout failed:', error);
+      });
+    };
+  } else {
+  // User is logged out
+  logoutBtn.textContent = 'ログイン';
+  logoutBtn.onclick = async () => {
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      const result = await auth.signInWithPopup(provider);
+      currentUserUID = result.user.uid;
+      updatePanelButtons(result.user);
+    } catch (error) {
+      console.error('Google login failed:', error);
+      alert('ログインに失敗しました');
     }
+  };
+}
+}
+
+// Initial setup
+function setupPanel() {
+  updatePanelPosition();
+  sideTab.addEventListener('click', () => {
+    sideTab.style.opacity = '0';
+    sideTab.classList.add('hidden');
+    panel.classList.add('show');
   });
+
+  cancelBtn.addEventListener('click', () => {
+    panel.classList.remove('show');
+    panel.addEventListener('transitionend', function handler(e) {
+      if (e.propertyName === 'transform') {
+        sideTab.classList.remove('hidden');
+        sideTab.style.opacity = '1';
+        panel.removeEventListener('transitionend', handler);
+      }
+    });
+  });
+}
+
+// Observe auth state and update panel accordingly
+onAuthStateChanged(auth, (user) => {
+  currentUserUID = user ? user.uid : null;
+  updatePanelButtons(user);
 });
 
-// Logout placeholder
-logoutBtn.addEventListener('click', () => {
-  signOut(auth).then(() => {
-    window.location.href = 'login.html';
-  }).catch((error) => {
-    console.error('Logout failed:', error);
-  });
-});
+setupPanel();
 
 </script>
 
