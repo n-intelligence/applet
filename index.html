@@ -1567,13 +1567,15 @@ getRedirectResult(auth)
   .then(result => {
     if (result?.user) {
       console.log('Redirect login successful:', result.user);
-      currentUserUID = result.user.uid; // ✅ add this
-      updatePanelButtons(result.user);  // ✅ make panel reflect login
-      initializeState();                 // ✅ initialize your Firestore data
+      currentUserUID = result.user.uid;       // keeps your UID
+      updatePanelButtons(result.user);        // updates UI
+      initializeState();                      // initializes Firestore state
+
+      // <-- NEW LINE -->
+      window.location.href = "https://n-intelligence.github.io/applet/"; // redirect back to your GitHub Pages
     }
   })
   .catch(err => console.error('Redirect login failed:', err));
-
 // Helper functions
 const jstDate = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
 const todayStr = () => {
